@@ -9,8 +9,8 @@ export type NewsItem =
   | { id: string; kind: "capital"; headline: string; incomeSeconds: number; weight: number }
   | { id: string; kind: "freePull"; headline: string; weight: number };
 
-export const NEWS_MIN_GAP_SEC = 150;
-export const NEWS_MAX_GAP_SEC = 330;
+export const NEWS_MIN_GAP_SEC = 110;
+export const NEWS_MAX_GAP_SEC = 240;
 export const NEWS_OFFER_SEC = 20;
 
 const sectorNews: [string, string][] = [

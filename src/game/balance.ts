@@ -28,7 +28,17 @@ export const GACHA_ODDS: Record<Rarity, number> = {
 
 export const FREE_PULLS = 3;
 export const PULL_BASE_COST = 100;
-export const PULL_COST_GROWTH = 1.08;
+/**
+ * Curva de coste de la cartera. Antes era 100 × 1,08^n (exponencial) y, como los ingresos crecen
+ * casi lineales con las empresas, a la tirada 130 una cartera costaba horas de ingresos.
+ * Ahora el coste sigue a los ingresos esperados (≈ PULL_INCOME_PER_PULL por cartera abierta) multiplicados
+ * por un "tiempo objetivo" que sube de PULL_TIME_MIN_SEC a PULL_TIME_MAX_SEC, con un frenado suave tardío.
+ */
+export const PULL_INCOME_PER_PULL = 0.75;
+export const PULL_TIME_MIN_SEC = 40;
+export const PULL_TIME_MAX_SEC = 360;
+export const PULL_TIME_RAMP = 120;
+export const PULL_LATE_SLOWDOWN = 600;
 
 /** ingresos/s de una acción = INCOME_COEF × (cap. USD en miles de millones) ^ INCOME_EXP */
 export const INCOME_COEF = 0.05;

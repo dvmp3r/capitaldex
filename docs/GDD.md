@@ -68,7 +68,10 @@ Al inicio de cada temporada (cada 3 meses) se recalcula la capitalización y la 
 ### Coste de la cartera
 
 ```
-coste(n) = 100 × 1,08^n        n = carteras abiertas (sin contar las gratis)
+coste(n) = max(100, 0,75·n × T(n) × (1 + n/600))      n = carteras abiertas (sin contar las gratis)
+T(n) = 40 s + 320 s × (1 − e^(−n/120))                tiempo objetivo entre carteras, de 40 s a 6 min
+
+Cambio del 15-oct-2026: la curva anterior, 100 × 1,08^n, era exponencial y a la tirada 130 costaba 2,2 M (unas 3 h de ingresos). Ahora el coste sigue a los ingresos esperados y una cartera cuesta entre 1 y 5 minutos de ingresos; los titulares, las órdenes, las noticias y el gestor automático son lo que acelera.
 ```
 
 Las tres primeras carteras son gratis (tutorial). El exponente se ajustará con datos de juego; el objetivo es que entre cartera y cartera pasen de 30 segundos al principio a unos 10 minutos tras 100 tiradas, antes de que entren las mejoras y el prestigio.

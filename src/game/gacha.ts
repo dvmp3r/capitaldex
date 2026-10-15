@@ -1,4 +1,4 @@
-import { FREE_PULLS, GACHA_ODDS, PULL_BASE_COST, PULL_COST_GROWTH } from "./balance";
+import { FREE_PULLS, GACHA_ODDS, PULL_BASE_COST, PULL_INCOME_PER_PULL, PULL_LATE_SLOWDOWN, PULL_TIME_MAX_SEC, PULL_TIME_MIN_SEC, PULL_TIME_RAMP } from "./balance";
 import { RARITY_RANK } from "./rarity";
 import { RARITIES, type Company, type GachaState, type Rarity } from "./types";
 
@@ -7,7 +7,11 @@ export const INITIAL_GACHA: GachaState = { pulls: 0, sinceEpic: 0, sinceLegendar
 /** Coste de la siguiente cartera; `costMult` aplica los descuentos del bróker (1 = sin descuento). */
 export function pullCost(pulls: number, costMult = 1): number {
   if (pulls < FREE_PULLS) return 0;
-  return Math.round(PULL_BASE_COST * Math.pow(PULL_COST_GROWTH, pulls - FREE_PULLS) * costMult);
+  const k = pulls - FREE_PULLS;
+  const targetSeconds = PULL_TIME_MIN_SEC + (PULL_TIME_MAX_SEC - PULL_TIME_MIN_SEC) * (1 - Math.exp(-k / PULL_TIME_RAMP));
+  const expectedIncome = PULL_INCOME_PER_PULL * k;
+  const cost = Math.max(PULL_BASE_COST, expectedIncome * targetSeconds * (1 + k / PULL_LATE_SLOWDOWN));
+  return Math.round(cost * costMult);
 }
 
 /** Sortea una rareza según las probabilidades. rng debe devolver [0, 1). */

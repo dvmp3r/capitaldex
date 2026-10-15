@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FREE_PULLS, GACHA_ODDS, PULL_BASE_COST, PULL_COST_GROWTH } from "./balance";
+import { FREE_PULLS, GACHA_ODDS, PULL_BASE_COST } from "./balance";
 import { INITIAL_GACHA, nextGachaState, pickCompany, pullCost, rollPull, weightedRarity } from "./gacha";
 import { RARITIES, type Company, type Rarity } from "./types";
 
@@ -31,7 +31,8 @@ describe("coste de cartera", () => {
   it("las primeras son gratis y luego crece geométricamente", () => {
     for (let i = 0; i < FREE_PULLS; i++) expect(pullCost(i)).toBe(0);
     expect(pullCost(FREE_PULLS)).toBe(PULL_BASE_COST);
-    expect(pullCost(FREE_PULLS + 1)).toBe(Math.round(PULL_BASE_COST * PULL_COST_GROWTH));
+    expect(pullCost(FREE_PULLS + 1)).toBeGreaterThanOrEqual(PULL_BASE_COST);
+    expect(pullCost(FREE_PULLS + 130)).toBeLessThan(100_000); // antes: 2,2 M
     expect(pullCost(FREE_PULLS + 10)).toBeGreaterThan(pullCost(FREE_PULLS + 9));
   });
 });
