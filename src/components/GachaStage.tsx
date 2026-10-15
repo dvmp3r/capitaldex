@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { playDrop, playKnob, playPop, playRattle, playReveal } from "../game/sound";
 import type { PullResult } from "../game/types";
 import { t } from "../i18n";
 import { useGame } from "../store/gameStore";
 import { CompanyCard } from "./CompanyCard";
-import { GachaMachine, type MachineHandle } from "./GachaMachine";
+import type { MachineHandle } from "./gacha3d/GachaMachine3D";
+
+// La escena 3D (three.js, ~1 MB) se carga aparte y solo cuando hace falta pintar la máquina.
+const GachaMachine3D = lazy(() => import("./gacha3d/GachaMachine3D").then((m) => ({ default: m.GachaMachine3D })));
 
 export type StagePhase = "idle" | "turning" | "dropping" | "opening" | "revealed";
 
@@ -103,7 +106,9 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
       data-legendary={phase === "revealed" && result?.rarity === "legendaria" ? "true" : undefined}
     >
       <div className="stage-light" />
-      <GachaMachine ref={machine} dimmed={phase === "revealed"} idle={phase === "idle" || phase === "revealed"} className="h-full w-full" />
+      <Suspense fallback={<div className="h-full w-full" />}>
+        <GachaMachine3D ref={machine} dimmed={phase === "revealed"} idle={phase === "idle" || phase === "revealed"} className="h-full w-full" />
+      </Suspense>
       {phase === "revealed" && result && (
         <div key={revealKey} className="card-rise absolute inset-[4%]">
           <CompanyCard company={result.company} shares={result.shares} size="lg" className="h-full w-full shadow-[0_30px_60px_-20px_oklch(0_0_0/0.9)]" />

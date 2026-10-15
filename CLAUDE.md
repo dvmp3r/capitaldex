@@ -10,6 +10,7 @@ Juego incremental de navegador: gacha de empresas cotizadas reales. Responder y 
 - `src/game/` — reglas puras (sin React). `balance.ts` tiene todas las constantes de equilibrio.
 - `src/store/gameStore.ts` — estado del juego (Zustand con persistencia local). Subir `SAVE_VERSION` y escribir una migración si cambia la forma del guardado.
 - `src/components/` — interfaz. Tokens de diseño en `src/index.css` (`@theme`).
+- `src/components/gacha3d/` — máquina de cápsulas en 3D: `sim.ts` (física y fases, sin three.js, con pruebas) y `GachaMachine3D.tsx` (escena React Three Fiber). `GachaStage.tsx` la dirige por fases. En desarrollo, `window.__gachaSim` permite forzar estados desde la consola.
 - `data/empresas.xlsx` → `npm run data` → `src/data/companies.json`. Nunca editar el JSON a mano.
 
 ## Comandos
@@ -25,7 +26,7 @@ npm run data       # regenerar datos desde el Excel
 
 - Cada cambio de reglas de juego lleva prueba en `src/game/*.test.ts`.
 - Antes de dar algo por terminado: `npm test` y `npm run build` en verde, y comprobar la pantalla afectada en el navegador.
-- Interfaz: blanco puro, marca frambuesa, cartas verticales con arte generado por ticker. Sin emojis como iconos (Windows no los dibuja igual), sin logos, sin banderas emoji.
+- Interfaz: tema oscuro (negro neutro), blanco como marca, dorado solo en el logo; cartas verticales con arte generado por ticker. Sin emojis como iconos (Windows no los dibuja igual), sin logos, sin banderas emoji.
 - Commits pequeños con mensaje en español que empiece por la fase (`f1: progreso offline configurable`).
 
 ## Protocolo de iteración autónoma

@@ -6,6 +6,15 @@ export function rarityLabel(r: Rarity): string {
   return t(`rarity.${r}`);
 }
 
+/** Colores de rareza para la escena 3D (equivalen a los tokens OKLCH del CSS). La común es plateada: siempre se ve un color. */
+export const RARITY_HEX: Record<Rarity, string> = {
+  comun: "#c4c4c4",
+  poco_comun: "#38d67c",
+  rara: "#4d8dff",
+  epica: "#b66dff",
+  legendaria: "#f4c63a",
+};
+
 export const RARITY_RANK: Record<Rarity, number> = {
   comun: 0,
   poco_comun: 1,
