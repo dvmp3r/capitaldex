@@ -158,6 +158,9 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
       data-reveal={showingCard && !leaving ? result.rarity : undefined}
     >
       <div className="stage-light" />
+      <div className="stage-twinkles" aria-hidden="true">
+        {TWINKLES.map((p, i) => <i key={i} style={{ left: `${p.x}%`, top: `${p.y}%`, animationDelay: `${p.d}s`, animationDuration: `${p.t}s`, width: p.s, height: p.s }} />)}
+      </div>
       {showingCard && !leaving && (result.rarity === "epica" || result.rarity === "legendaria") && <div className="stage-rays" />}
       {HAS_WEBGL ? (
         <Suspense fallback={<div className="machine-skeleton h-full w-full" aria-busy="true" />}>
@@ -180,6 +183,13 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
     </div>
   );
 }
+
+/** Destellos fijos alrededor de la máquina (posición en %, retardo y duración en s, tamaño en px). */
+const TWINKLES = [
+  { x: 8, y: 18, d: 0, t: 3.6, s: 3 }, { x: 90, y: 12, d: 1.1, t: 4.2, s: 2 }, { x: 94, y: 48, d: 2.3, t: 3.1, s: 3 },
+  { x: 4, y: 56, d: 0.7, t: 4.8, s: 2 }, { x: 14, y: 80, d: 1.9, t: 3.9, s: 2 }, { x: 86, y: 78, d: 2.8, t: 4.4, s: 3 },
+  { x: 50, y: 4, d: 1.4, t: 5, s: 2 }, { x: 72, y: 30, d: 3.2, t: 3.4, s: 2 }, { x: 26, y: 36, d: 2.1, t: 4.6, s: 2 },
+];
 
 /** Chispas por rareza: cuántas y de qué tono. Común y poco común no tienen. */
 const SPARKS: Record<Rarity, number> = { comun: 0, poco_comun: 0, rara: 12, epica: 24, legendaria: 44 };

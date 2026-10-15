@@ -122,6 +122,9 @@ h1, h2, h3 { text-wrap: balance; }
   pointer-events: none;
   z-index: -1;
 }
+.stage-twinkles { position: absolute; inset: 0; pointer-events: none; z-index: -1; }
+.stage-twinkles i { position: absolute; border-radius: 50%; background: oklch(0.92 0.12 92); box-shadow: 0 0 6px 1px oklch(0.88 0.14 90 / 0.6); opacity: 0; animation: twinkle 4s ease-in-out infinite; }
+@keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(0.4); } 50% { opacity: 0.9; transform: scale(1); } }
 .stage[data-reveal="comun"]::before { display: none; }
 .stage[data-reveal="poco_comun"]::before { --halo: var(--color-poco_comun); opacity: 0.5; animation-duration: 1s; }
 .stage[data-reveal="rara"]::before { --halo: var(--color-rara); opacity: 0.75; animation-duration: 1.3s; }
@@ -339,7 +342,7 @@ h1, h2, h3 { text-wrap: balance; }
 @media (prefers-reduced-motion: reduce) {
   .card[data-rarity="legendaria"]::after { animation: none; opacity: 0.35; }
   .stage[data-reveal]::before { animation: burst-fade 600ms ease-out both; }
-  .stage-rays { display: none; }
+  .stage-rays, .stage-twinkles { display: none; }
   .rise, .card-rise, .card-rise-comun, .card-rise-epica, .card-rise-legendaria, .intro-in, .intro-in-2, .intro-in-3 { animation: rise-fade 200ms ease-out both; }
   .card-leave { animation: rise-fade 200ms ease-out reverse both; }
   .card-sheen::after, .machine-caps-idle .machine-cap { animation: none; }
@@ -347,7 +350,7 @@ h1, h2, h3 { text-wrap: balance; }
 }
 html[data-motion="reduced"] .card[data-rarity="legendaria"]::after { animation: none; opacity: 0.35; }
 html[data-motion="reduced"] .stage[data-reveal]::before { animation: burst-fade 600ms ease-out both; }
-html[data-motion="reduced"] .stage-rays { display: none; }
+html[data-motion="reduced"] :is(.stage-rays, .stage-twinkles) { display: none; }
 html[data-motion="reduced"] :is(.rise, .card-rise, .card-rise-comun, .card-rise-epica, .card-rise-legendaria, .intro-in, .intro-in-2, .intro-in-3) { animation: rise-fade 200ms ease-out both; }
 html[data-motion="reduced"] .card-leave { animation: rise-fade 200ms ease-out reverse both; }
 html[data-motion="reduced"] .card-sheen::after, html[data-motion="reduced"] .machine-caps-idle .machine-cap { animation: none; }

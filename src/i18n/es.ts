@@ -90,6 +90,11 @@ export const es = {
     enter: "Entrar en mi colección",
     skip: "Saltar la introducción",
     progress: "{n} de {total} carteras gratis",
+    accountTitle: "Guarda tu progreso",
+    accountLead: "Con una cuenta tu partida se guarda en la nube, la recuperas en cualquier dispositivo y entras en el ranking mundial. Solo nombre y contraseña, sin correo.",
+    registerHint: "Nombre de 3 a 16 letras, números o guion bajo; contraseña de 6 caracteres o más.",
+    guest: "Probar como invitado",
+    guestHint: "Podrás crear la cuenta más tarde desde «Cuenta», arriba a la derecha.",
   },
   stats: {
     title: "Estadísticas",

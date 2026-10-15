@@ -45,7 +45,7 @@ export interface Particle {
 }
 
 /** Vitrina (caja) donde viven las cápsulas; `dome` es su esfera envolvente, para la ilustración 2D de respaldo. */
-const CHAMBER = { min: { x: -0.93, y: 2.08, z: -0.66 }, max: { x: 0.93, y: 3.5, z: 0.66 } };
+const CHAMBER = { min: { x: -0.82, y: 2.08, z: -0.52 }, max: { x: 0.82, y: 3.55, z: 0.52 } };
 export const GEOM = {
   chamber: CHAMBER,
   dome: {
