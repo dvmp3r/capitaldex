@@ -249,3 +249,9 @@ Nunca: vender ventaja en el ranking, mercado de cartas con dinero real, criptoac
 ### Juego manual: órdenes (15-oct-2026)
 
 Operar gasta una **orden**. Hay 10 órdenes como máximo y se recupera una cada 10 s; cada orden vale 3 s de ingresos (la serie "Mesa de operaciones" sube hasta ~16 s). Así el juego manual aporta como mucho un 30 % extra (160 % con la serie al máximo) y ya no es posible generar capital ilimitado pulsando. Antes cada pulsación valía 5 s de ingresos sin límite, y bastaba con pulsar rápido para comprar cualquier cosa.
+
+### Objetivos de partida y suerte (15-oct-2026)
+
+Tres **objetivos** cortos siempre visibles bajo la máquina (abre N carteras, consigue una rara, 3 empresas de un sector, sube niveles de titulares, aprovecha noticias, genera X capital, acciones de una empresa, órdenes, descubre empresas). Miden el incremento desde que se asignan, pagan capital (minutos de ingresos) o carteras gratis y se sustituyen al cumplirse. Son la fuente de pequeñas recompensas entre cartera y cartera.
+
+**Suerte:** la serie "Ojo clínico" multiplica la probabilidad de épica y legendaria ×1,1 por nivel (×4,2 al máximo: legendaria 0,3 % → 1,25 %); lo que suben se le resta a común, que nunca baja del 20 %. **Agitar** la máquina (arrastrarla con fuerza) en los 12 s anteriores a abrir da ×1,25 a épica y legendaria en esa cartera, una sola vez. Las probabilidades efectivas se muestran siempre.

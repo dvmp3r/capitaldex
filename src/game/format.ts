@@ -8,15 +8,16 @@ const UNITS: [number, string][] = [
   [1e3, " k"],
 ];
 
-const nf = (digits: number) =>
-  new Intl.NumberFormat("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: digits });
+const nf = (digits: number, fixed = false) =>
+  new Intl.NumberFormat("es-ES", { minimumFractionDigits: fixed ? digits : 0, maximumFractionDigits: digits });
 
 /** 1234567 → "1,23 M". Convención española: M = millón, mil M = 1e9, B = billón (1e12). */
 export function fmt(n: number, digits = 2): string {
   if (!Number.isFinite(n)) return "∞";
   const abs = Math.abs(n);
   for (const [value, suffix] of UNITS) {
-    if (abs >= value) return nf(digits).format(n / value) + suffix;
+    // Decimales fijos: "13,90 k" no se encoge a "13,9 k" y la cifra no parpadea al cambiar.
+    if (abs >= value) return nf(digits, true).format(n / value) + suffix;
   }
   return nf(abs < 10 ? digits : 0).format(n);
 }

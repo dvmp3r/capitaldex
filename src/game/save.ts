@@ -55,6 +55,8 @@ export function parseSave(text: string): ParseResult {
   }
   if (d.freePulls !== undefined && !isInt(d.freePulls)) return { ok: false, error: t("save.invalidField", { field: "freePulls" }) };
   if (d.orders !== undefined && !(typeof d.orders === "number" && Number.isFinite(d.orders) && d.orders >= 0)) return { ok: false, error: t("save.invalidField", { field: "orders" }) };
+  if (d.missions !== undefined && !Array.isArray(d.missions)) return { ok: false, error: t("save.invalidField", { field: "missions" }) };
+  if (d.missionsDone !== undefined && !isInt(d.missionsDone)) return { ok: false, error: t("save.invalidField", { field: "missionsDone" }) };
   if (d.achievements !== undefined && !(Array.isArray(d.achievements) && d.achievements.every((a) => typeof a === "string"))) {
     return { ok: false, error: t("save.invalidField", { field: "achievements" }) };
   }

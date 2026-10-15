@@ -5,6 +5,7 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 import { RARITY_HEX } from "../../game/rarity";
 import type { Rarity } from "../../game/types";
 import type { MachineHandle } from "./Machine2D";
+import { useGame } from "../../store/gameStore";
 import { GEOM, GachaSim } from "./sim";
 
 interface Props {
@@ -74,7 +75,7 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 0.92;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
@@ -83,7 +84,7 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     // Entorno neutro muy suave: da volumen a los materiales PBR sin reflejos marcados (los metales van mates).
     const pmrem = new THREE.PMREMGenerator(renderer);
     scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environmentIntensity = 0.45;
+    scene.environmentIntensity = 0.2;
     pmrem.dispose();
     const camera = new THREE.PerspectiveCamera(26, 5 / 7, 0.1, 30);
     const camBase = new THREE.Vector3(0.9, 2.7, 9.4);
@@ -92,15 +93,15 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     camera.lookAt(lookAt);
 
     // Luces: la principal proyecta sombras (un solo mapa de 1024, tope ajustado a la máquina).
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x2a2a30, 0.55));
-    const rimLight = new THREE.DirectionalLight(0xffe2a8, 1.4);
+    scene.add(new THREE.HemisphereLight(0xe8e8ee, 0x1a1a1e, 0.5));
+    const rimLight = new THREE.DirectionalLight(0xffe2a8, 1.0);
     rimLight.position.set(-2, 5, -6);
     scene.add(rimLight);
     // Luz interior de la vitrina: las bolas se iluminan desde arriba como en un escaparate
-    const showcase = new THREE.PointLight(0xfff4dc, 2.2, 3.2, 1.6);
+    const showcase = new THREE.PointLight(0xfff4dc, 1.6, 3.2, 1.6);
     showcase.position.set(0, 3.45, 0);
     scene.add(showcase);
-    const key = new THREE.DirectionalLight(0xfff3e0, 2.6);
+    const key = new THREE.DirectionalLight(0xfff3e0, 2.3);
     key.position.set(4, 7, 6);
     key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
@@ -119,12 +120,12 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     scene.add(fill);
 
     // Materiales
-    const red = new THREE.MeshStandardMaterial({ color: 0xd4382d, roughness: 0.38, metalness: 0.05 });
+    const red = new THREE.MeshStandardMaterial({ color: 0xc02f26, roughness: 0.45, metalness: 0.05 });
     const redDark = new THREE.MeshStandardMaterial({ color: 0x9c231c, roughness: 0.55, metalness: 0.05 });
-    const chrome = new THREE.MeshStandardMaterial({ color: 0xd9dde3, roughness: 0.32, metalness: 0.85 });
-    const steel = new THREE.MeshStandardMaterial({ color: 0xb8bec6, roughness: 0.42, metalness: 0.75 });
+    const chrome = new THREE.MeshStandardMaterial({ color: 0xc9cdd3, roughness: 0.42, metalness: 0.8 });
+    const steel = new THREE.MeshStandardMaterial({ color: 0xa9afb7, roughness: 0.5, metalness: 0.7 });
     const dark = new THREE.MeshStandardMaterial({ color: 0x17171b, roughness: 0.6, metalness: 0.1 });
-    const white = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.5, metalness: 0 });
+    const white = new THREE.MeshStandardMaterial({ color: 0xe9e9e6, roughness: 0.55, metalness: 0 });
     const glass = new THREE.MeshPhongMaterial({ color: 0xe6efff, specular: 0xffffff, shininess: 180, transparent: true, opacity: 0.1, depthWrite: false });
     const glassEdge = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.14, side: THREE.BackSide, depthWrite: false });
 
@@ -308,27 +309,27 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       cv.width = cv.height = 256;
       const g = cv.getContext("2d")!;
       const grad = g.createRadialGradient(128, 118, 20, 128, 128, 128);
-      grad.addColorStop(0, "#111114");
-      grad.addColorStop(0.55, "#1d1d22");
-      grad.addColorStop(1, "#2a2a30");
+      grad.addColorStop(0, "#0e0e10");
+      grad.addColorStop(0.55, "#141416");
+      grad.addColorStop(1, "#1c1c1e");
       g.fillStyle = grad;
       g.fillRect(0, 0, 256, 256);
       return new THREE.CanvasTexture(cv);
     })();
-    const podiumSide = new THREE.MeshStandardMaterial({ color: 0x1a1a1f, roughness: 0.55, metalness: 0.2 });
-    const podiumTop = new THREE.MeshStandardMaterial({ map: shadowTex, roughness: 0.35, metalness: 0.3 });
+    const podiumSide = new THREE.MeshStandardMaterial({ color: 0x121214, roughness: 0.7, metalness: 0.1 });
+    const podiumTop = new THREE.MeshStandardMaterial({ map: shadowTex, roughness: 0.6, metalness: 0.15 });
     const podium = new THREE.Mesh(new THREE.CylinderGeometry(1.75, 1.85, 0.14, 64), [podiumSide, podiumTop, podiumSide]);
     podium.position.set(0, -0.07, 0.25);
     podium.receiveShadow = true;
     scene.add(podium);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.74, 0.022, 10, 96), new THREE.MeshStandardMaterial({ color: 0xf0c04a, roughness: 0.3, metalness: 0.8, emissive: 0x3a2a08 }));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.74, 0.016, 10, 96), new THREE.MeshStandardMaterial({ color: 0x8a6a20, roughness: 0.45, metalness: 0.7, emissive: 0x1a1204 }));
     ring.rotation.x = Math.PI / 2;
     ring.position.set(0, 0.004, 0.25);
     scene.add(ring);
 
     // Cápsulas de la vitrina: una malla instanciada, un color por cápsula
     const r = GEOM.capR;
-    const capMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.42, metalness: 0 });
+    const capMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0 });
     const caps = new THREE.InstancedMesh(new THREE.SphereGeometry(r, 20, 14), capMat, sim.caps.length);
     caps.castShadow = true;
     caps.receiveShadow = true;
@@ -387,6 +388,7 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       const vx = dx / dt; // px/s
       // Inclinar la máquina: las bolas resbalan hacia el lado contrario; un tirón fuerte las levanta un poco.
       if (Math.abs(vx) > 60) sim.shake(clamp(-vx * 0.012, -7, 7), Math.min(1.5, Math.max(0, Math.abs(vx) - 400) * 0.004), 0);
+      if (Math.abs(vx) > 450) useGame.getState().noteShake();
       view.x = e.clientX;
       view.y = e.clientY;
       view.t = now;

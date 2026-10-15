@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FREE_PULLS, GACHA_ODDS, PULL_BASE_COST } from "./balance";
-import { INITIAL_GACHA, nextGachaState, pickCompany, pullCost, rollPull, weightedRarity } from "./gacha";
+import { effectiveOdds, INITIAL_GACHA, nextGachaState, pickCompany, pullCost, rollPull, weightedRarity } from "./gacha";
 import { RARITIES, type Company, type Rarity } from "./types";
 
 /** Generador determinista (mulberry32) para pruebas reproducibles. */
@@ -49,6 +49,16 @@ describe("probabilidades", () => {
     const counts = Object.fromEntries(RARITIES.map((r) => [r, 0])) as Record<Rarity, number>;
     for (let i = 0; i < n; i++) counts[weightedRarity(rng)]++;
     for (const r of RARITIES) expect(Math.abs(counts[r] / n - GACHA_ODDS[r])).toBeLessThan(0.01);
+  });
+
+  it("la suerte sube épica y legendaria a costa de común, con tope", () => {
+    const o = effectiveOdds(2);
+    expect(o.epica).toBeCloseTo(GACHA_ODDS.epica * 2, 10);
+    expect(o.legendaria).toBeCloseTo(GACHA_ODDS.legendaria * 2, 10);
+    expect(o.comun + o.poco_comun + o.rara + o.epica + o.legendaria).toBeCloseTo(1, 10);
+    const capped = effectiveOdds(1000);
+    expect(capped.comun).toBeCloseTo(0.2, 10);
+    expect(capped.comun + capped.poco_comun + capped.rara + capped.epica + capped.legendaria).toBeCloseTo(1, 10);
   });
 
   it("rng en los límites devuelve común y legendaria", () => {

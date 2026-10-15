@@ -77,6 +77,9 @@ export interface SaveData {
   orders?: number;
   /** Desde la versión 4 */
   achievements?: string[];
+  /** Objetivos de partida activos y completados (desde la versión 4) */
+  missions?: unknown[];
+  missionsDone?: number;
 }
 
 export interface SetProgress {

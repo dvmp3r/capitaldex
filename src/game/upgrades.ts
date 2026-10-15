@@ -18,7 +18,8 @@ export type UpgradeEffect =
   | { kind: "offlineCapHours"; set: number }
   | { kind: "newsFrequency"; mult: number }
   | { kind: "newsDuration"; mult: number }
-  | { kind: "autoPull"; seconds: number };
+  | { kind: "autoPull"; seconds: number }
+  | { kind: "oddsMult"; mult: number };
 
 export type SeriesKind = UpgradeEffect["kind"];
 
@@ -69,6 +70,8 @@ export interface Multipliers {
   newsDuration: number;
   /** Segundos entre carteras automáticas; 0 = sin gestor. */
   autoPullSeconds: number;
+  /** Multiplicador de la probabilidad de épica y legendaria (1 = base). */
+  oddsMult: number;
 }
 
 export interface Boost {
@@ -313,6 +316,16 @@ function build(): Series[] {
     requirement: (level) => ({ pulls: 20 + 15 * level }),
   });
   out.push({
+    id: "odds", category: "Ojo clínico", kind: "oddsMult",
+    headlines: [
+      ["Contratas a un analista de carteras", "Más probabilidad de épica y legendaria en cada cartera."],
+      ["Tu equipo huele las oportunidades", "La suerte se entrena: épicas y legendarias cada vez más cerca."],
+      ["Información privilegiada (legal, claro)", "Las joyas del mercado ya no se esconden de ti."],
+    ],
+    maxLevel: 15, baseCost: 8_000, costGrowth: 1.75,
+    requirement: (level) => ({ pulls: 20 + 15 * level }),
+  });
+  out.push({
     id: "autoPull", category: "Gestor automático", kind: "autoPull",
     headlines: [
       ["Contratas a un becario", "Abre una cartera por ti cada cinco minutos (si hay capital)."],
@@ -352,6 +365,8 @@ export function seriesValue(s: Series, level: number): number {
       return OFFLINE_CAP_SECONDS / 3600 + 1.6 * level; // 8 h → 24 h
     case "autoPull":
       return level <= 0 ? 0 : Math.round(300 * Math.pow(0.78, level - 1)); // 300 s → 32 s en el nivel 10
+    case "oddsMult":
+      return Math.pow(1.1, level); // ×1,1 por nivel: ×4,2 en el nivel 15 (legendaria 0,3 % → 1,25 %)
   }
 }
 
@@ -364,6 +379,7 @@ export function seriesValueLabel(s: Series, level: number): string {
     case "offlineRate": return `${Math.round(v * 100)} %`;
     case "offlineCapHours": return `${Math.round(v)} h`;
     case "autoPull": return v ? `cada ${v} s` : "no";
+    case "oddsMult": return `×${v.toFixed(2)}`;
     default: return `×${v.toFixed(2)}`;
   }
 }
@@ -381,6 +397,7 @@ export function seriesTargetLabel(s: Series, rarityLabel: (r: Rarity) => string)
     case "newsFrequency": return "Noticias";
     case "newsDuration": return "Duración";
     case "autoPull": return "Cartera automática";
+    case "oddsMult": return "Épica y legendaria";
   }
 }
 
@@ -418,6 +435,7 @@ export function baseMultipliers(): Multipliers {
     newsFrequency: 1,
     newsDuration: 1,
     autoPullSeconds: 0,
+    oddsMult: 1,
   };
 }
 
@@ -436,6 +454,7 @@ function applySeries(m: Multipliers, s: Series, level: number) {
     case "newsFrequency": m.newsFrequency *= v; break;
     case "newsDuration": m.newsDuration *= v; break;
     case "autoPull": m.autoPullSeconds = v; break;
+    case "oddsMult": m.oddsMult *= v; break;
   }
 }
 
@@ -475,6 +494,7 @@ export function effectLabel(e: UpgradeEffect, rarityLabel: (r: Rarity) => string
     case "newsFrequency": return `Noticias ×${e.mult}`;
     case "newsDuration": return `Duración ×${e.mult}`;
     case "autoPull": return `Cartera automática cada ${e.seconds} s`;
+    case "oddsMult": return `Épica y legendaria ×${e.mult}`;
   }
 }
 

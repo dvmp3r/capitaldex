@@ -3,7 +3,7 @@ import { ACHIEVEMENTS, achievementsMult, newlyUnlocked, rewardLabel, type Achiev
 
 const ctx = (over: Partial<AchievementContext> = {}): AchievementContext => ({
   pulls: 0, companies: 0, totalEarned: 0, clicks: 0, newsTaken: 0, maxShares: 0, sectors: 0, countries: 0,
-  setsCompleted: 0, upgradeLevels: 0, maxedSeries: 0, byRarity: { comun: 0, poco_comun: 0, rara: 0, epica: 0, legendaria: 0 },
+  setsCompleted: 0, upgradeLevels: 0, maxedSeries: 0, byRarity: { comun: 0, poco_comun: 0, rara: 0, epica: 0, legendaria: 0 }, bySector: {},
   ...over,
 });
 

@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { FREE_PULLS, GACHA_ODDS } from "../game/balance";
+import { FREE_PULLS, SHAKE_ODDS_BONUS, SHAKE_WINDOW_MS } from "../game/balance";
 import { fmtCapital, fmtDuration, fmtPct } from "../game/format";
-import { pullCost } from "../game/gacha";
+import { effectiveOdds, pullCost } from "../game/gacha";
 import { rarityLabel } from "../game/rarity";
 import { RARITIES, type Rarity } from "../game/types";
 import { t } from "../i18n";
 import { useGame, useMults } from "../store/gameStore";
 import { RARITY_INK } from "./CompanyCard";
 import { GachaStage, type StagePhase } from "./GachaStage";
+import { Missions } from "./Missions";
 
 export function GachaPanel() {
   const capital = useGame((s) => s.capital);
@@ -17,7 +18,11 @@ export function GachaPanel() {
   const freePulls = useGame((s) => s.freePulls);
   const mults = useMults();
   const revealKey = useGame((s) => s.pullSeq);
+  const shakenAt = useGame((s) => s.shakenAt);
+  const lastTick = useGame((s) => s.lastTick);
   const [phase, setPhase] = useState<StagePhase>("idle");
+  const shaken = lastTick - shakenAt < SHAKE_WINDOW_MS && shakenAt > 0;
+  const odds = effectiveOdds(mults.oddsMult * (shaken ? SHAKE_ODDS_BONUS : 1));
 
   const freeLeft = Math.max(0, FREE_PULLS - gacha.pulls) + freePulls;
   const cost = freeLeft > 0 ? 0 : pullCost(gacha.pulls, mults.gachaCost);
@@ -61,6 +66,7 @@ export function GachaPanel() {
         </span>
       </button>
 
+      {shaken && <p className="rise mt-2 text-center text-[12px] font-semibold text-gold">{t("gacha.shaken", { mult: SHAKE_ODDS_BONUS })}</p>}
       <Hint pulls={gacha.pulls} canAfford={canAfford} lastRarity={lastPull?.rarity} />
 
       <div className="num mt-4 flex justify-between text-xs text-muted">
@@ -68,17 +74,20 @@ export function GachaPanel() {
         <span>{t("gacha.streakLegendary", { n: gacha.sinceLegendary })}</span>
       </div>
 
+      <Missions />
+
       <details className="info mt-4 text-xs text-muted">
         <summary className="cursor-pointer select-none font-medium hover:text-ink">{t("gacha.odds")}</summary>
         <ul className="num mt-2 space-y-1">
           {[...RARITIES].reverse().map((r) => (
             <li key={r} className="flex justify-between">
               <span className={`font-sans font-semibold ${RARITY_INK[r]}`}>{rarityLabel(r)}</span>
-              <span>{fmtPct(GACHA_ODDS[r], GACHA_ODDS[r] < 0.05 ? 1 : 0)}</span>
+              <span>{fmtPct(odds[r], odds[r] < 0.05 ? 1 : 0)}</span>
             </li>
           ))}
         </ul>
         <p className="mt-2 leading-snug">{t("gacha.oddsNote")}</p>
+        <p className="mt-1 leading-snug">{t("gacha.shakeHint", { mult: SHAKE_ODDS_BONUS })}</p>
       </details>
 
       <StatsPanel />

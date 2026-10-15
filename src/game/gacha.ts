@@ -1,4 +1,4 @@
-import { FREE_PULLS, GACHA_ODDS, PULL_BASE_COST, PULL_INCOME_PER_PULL, PULL_LATE_SLOWDOWN, PULL_TIME_MAX_SEC, PULL_TIME_MIN_SEC, PULL_TIME_RAMP } from "./balance";
+import { FREE_PULLS, GACHA_ODDS, ODDS_MIN_COMMON, PULL_BASE_COST, PULL_INCOME_PER_PULL, PULL_LATE_SLOWDOWN, PULL_TIME_MAX_SEC, PULL_TIME_MIN_SEC, PULL_TIME_RAMP } from "./balance";
 import { RARITY_RANK } from "./rarity";
 import { RARITIES, type Company, type GachaState, type Rarity } from "./types";
 
@@ -14,11 +14,28 @@ export function pullCost(pulls: number, costMult = 1): number {
   return Math.round(cost * costMult);
 }
 
+/**
+ * Probabilidades efectivas: `luck` multiplica épica y legendaria (mejoras de suerte, agitar la máquina)
+ * y lo que suben se le quita a común, que nunca baja de ODDS_MIN_COMMON.
+ */
+export function effectiveOdds(luck = 1): Record<Rarity, number> {
+  if (luck <= 1) return GACHA_ODDS;
+  const epica = GACHA_ODDS.epica * luck;
+  const legendaria = GACHA_ODDS.legendaria * luck;
+  const others = GACHA_ODDS.poco_comun + GACHA_ODDS.rara + epica + legendaria;
+  const comun = 1 - others;
+  if (comun >= ODDS_MIN_COMMON) return { comun, poco_comun: GACHA_ODDS.poco_comun, rara: GACHA_ODDS.rara, epica, legendaria };
+  // Tope: se reparte lo que queda manteniendo la proporción épica/legendaria.
+  const room = 1 - ODDS_MIN_COMMON - GACHA_ODDS.poco_comun - GACHA_ODDS.rara;
+  const k = room / (epica + legendaria);
+  return { comun: ODDS_MIN_COMMON, poco_comun: GACHA_ODDS.poco_comun, rara: GACHA_ODDS.rara, epica: epica * k, legendaria: legendaria * k };
+}
+
 /** Sortea una rareza según las probabilidades. rng debe devolver [0, 1). */
-export function weightedRarity(rng: () => number): Rarity {
+export function weightedRarity(rng: () => number, odds: Record<Rarity, number> = GACHA_ODDS): Rarity {
   let r = rng();
   for (const rarity of RARITIES) {
-    r -= GACHA_ODDS[rarity];
+    r -= odds[rarity];
     if (r < 0) return rarity;
   }
   return "comun";
@@ -48,8 +65,8 @@ export function nextGachaState(state: GachaState, rarity: Rarity): GachaState {
 }
 
 /** Tirada completa: sorteo y elección de empresa. Sin piedad: probabilidad pura. No muta nada. */
-export function rollPull(pool: Record<Rarity, Company[]>, state: GachaState, rng: () => number = Math.random) {
-  const rolled = weightedRarity(rng);
+export function rollPull(pool: Record<Rarity, Company[]>, state: GachaState, rng: () => number = Math.random, odds: Record<Rarity, number> = GACHA_ODDS) {
+  const rolled = weightedRarity(rng, odds);
   const picked = pickCompany(pool, rolled, rng);
   return { ...picked, pity: false, next: nextGachaState(state, picked.rarity) };
 }

@@ -77,6 +77,8 @@ export const es = {
     hintSaving: "Mientras ahorras, mira en la colección qué índices te faltan: completarlos multiplica tus ingresos.",
     hintEpic: "Una épica. Las de más de 350 000 M $ son las que más producen después de las legendarias.",
     skipHint: "Toca para saltar",
+    shaken: "¡Agitada! Épica y legendaria ×{mult} en la próxima cartera",
+    shakeHint: "Truco: arrastra la máquina con ganas justo antes de abrir y la siguiente cartera tiene épica y legendaria ×{mult}.",
     saveHint: "Toca la carta para guardarla",
   },
   intro: {
@@ -155,6 +157,10 @@ export const es = {
     market: "Mercado",
     achievements: "Logros",
     ranking: "Ranking",
+  },
+  missions: {
+    title: "Objetivos",
+    done: "{n} completados",
   },
   achievements: {
     title: "Logros",

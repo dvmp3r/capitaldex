@@ -2,10 +2,11 @@ import { useMemo } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { BY_ID, INDEX_MEMBERS, POOL } from "../data/companies";
-import { ORDERS_MAX, ORDERS_REFILL_SECONDS, OFFLINE_MIN_SECONDS, SAVE_VERSION, SHARE_MILESTONES } from "../game/balance";
+import { ORDERS_MAX, ORDERS_REFILL_SECONDS, OFFLINE_MIN_SECONDS, SAVE_VERSION, SHAKE_ODDS_BONUS, SHAKE_WINDOW_MS, SHARE_MILESTONES } from "../game/balance";
 import { clickValue, offlineEarnings, totalIncome, type IncomeBreakdown } from "../game/economy";
-import { ACHIEVEMENT_BY_ID, achievementsMult, newlyUnlocked, rewardLabel, type AchievementContext } from "../game/achievements";
-import { INITIAL_GACHA, pullCost, rollPull } from "../game/gacha";
+import { ACHIEVEMENT_BY_ID, achievementsMult, newlyUnlocked, rewardLabel, type AchievementContext, type Reward } from "../game/achievements";
+import { isMission, MISSION_COUNT, missionDone, newMission, type Mission } from "../game/missions";
+import { effectiveOdds, INITIAL_GACHA, pullCost, rollPull } from "../game/gacha";
 import { NEWS_OFFER_SEC, pickNews, scheduleNext, type NewsItem } from "../game/news";
 import { RARITY_RANK, rarityOf } from "../game/rarity";
 import { regionOf } from "../game/regions";
@@ -61,6 +62,11 @@ export interface GameState {
   lastAutoPull: number;
   /** Órdenes de Operar disponibles (se recuperan con el tiempo) */
   orders: number;
+  /** Objetivos de partida activos (3) y cuántos se han completado */
+  missions: Mission[];
+  missionsDone: number;
+  /** Última sacudida fuerte de la máquina (bono de suerte para la siguiente cartera; no se guarda) */
+  shakenAt: number;
   /** Noticias: oferta en pantalla y momento de la siguiente */
   news: { offer: NewsOffer | null; nextAt: number };
   /** Transitorio (no se guarda) */
@@ -77,6 +83,8 @@ export interface GameState {
   buyUpgrade: (id: string) => boolean;
   acceptNews: () => void;
   checkAchievements: () => void;
+  /** La máquina se ha agitado con ganas: bono de suerte para la siguiente cartera. */
+  noteShake: () => void;
   dismissNews: () => void;
   dismissOffline: () => void;
   clearLastPull: () => void;
@@ -103,6 +111,9 @@ function initialState(now = Date.now()) {
     pullSeq: 0,
     lastAutoPull: 0,
     orders: ORDERS_MAX,
+    missions: [] as Mission[],
+    missionsDone: 0,
+    shakenAt: 0,
     news: { offer: null as NewsOffer | null, nextAt: 0 },
     lastPull: null,
     offline: null,
@@ -177,6 +188,7 @@ export function achievementContextOf(s: Pick<GameState, "holdings" | "gacha" | "
     upgradeLevels: Object.values(s.upgrades).reduce((n, l) => n + l, 0),
     maxedSeries: SERIES.filter((sr) => (s.upgrades[sr.id] ?? 0) >= sr.maxLevel).length,
     byRarity: base.byRarity,
+    bySector: base.bySector,
   };
 }
 
@@ -246,8 +258,9 @@ export const useGame = create<GameState>()(
         const free = s.freePulls > 0;
         const cost = free ? 0 : pullCost(s.gacha.pulls, mults.gachaCost);
         if (s.capital < cost) return null;
-        const roll = rollPull(POOL, s.gacha);
         const now = Date.now();
+        const shaken = now - s.shakenAt < SHAKE_WINDOW_MS;
+        const roll = rollPull(POOL, s.gacha, Math.random, effectiveOdds(mults.oddsMult * (shaken ? SHAKE_ODDS_BONUS : 1)));
         const prev = s.holdings[roll.company.id];
         const shares = (prev?.shares ?? 0) + 1;
         const result: PullResult = { company: roll.company, rarity: roll.rarity, isNew: !prev, shares, pity: roll.pity };
@@ -259,6 +272,7 @@ export const useGame = create<GameState>()(
           capital: s.capital - cost,
           holdings: { ...s.holdings, [roll.company.id]: { shares, firstAt: prev?.firstAt ?? now } },
           gacha: roll.next,
+          shakenAt: 0,
           freePulls: free ? s.freePulls - 1 : s.freePulls,
           lastPull: result,
           pullSeq: s.pullSeq + 1,
@@ -331,25 +345,45 @@ export const useGame = create<GameState>()(
 
       checkAchievements: () => {
         const s = get();
-        const fresh = newlyUnlocked(achievementContextOf(s), s.achievements);
-        if (!fresh.length) return;
+        const ctx = achievementContextOf(s);
+        const fresh = newlyUnlocked(ctx, s.achievements);
+        const doneMissions = s.missions.filter((m) => missionDone(m, ctx));
+        const needMissions = s.missions.length < MISSION_COUNT || doneMissions.length > 0;
+        if (!fresh.length && !needMissions) return;
         const mults = multsOf(s.upgrades, s.boosts, Date.now(), s.achievements);
         const income = incomeOf(s.holdings, mults).total;
         let capital = s.capital;
         let totalEarned = s.totalEarned;
         let freePulls = s.freePulls;
         const toasts = [...s.toasts.slice(-2)];
-        for (const a of fresh) {
-          if (a.reward.kind === "capital") {
-            const gain = Math.max(100, income * a.reward.minutes * 60);
+        const pay = (reward: Reward) => {
+          if (reward.kind === "capital") {
+            const gain = Math.max(100, income * reward.minutes * 60);
             capital += gain;
             totalEarned += gain;
-          } else if (a.reward.kind === "freePulls") freePulls += a.reward.n;
+          } else if (reward.kind === "freePulls") freePulls += reward.n;
+        };
+        for (const a of fresh) {
+          pay(a.reward);
           toasts.push({ id: ++toastSeq, text: `Logro: ${a.title} · ${rewardLabel(a.reward)}`, kind: "gold" });
         }
-        set({ capital, totalEarned, freePulls, toasts, achievements: [...s.achievements, ...fresh.map((a) => a.id)] });
+        // Objetivos cumplidos: se cobran y se sustituyen; si faltan, se completan hasta tres.
+        let missions = s.missions.filter((m) => !doneMissions.includes(m));
+        let missionsDone = s.missionsDone;
+        for (const m of doneMissions) {
+          pay(m.reward);
+          missionsDone++;
+          toasts.push({ id: ++toastSeq, text: `Objetivo: ${m.title} · ${rewardLabel(m.reward)}`, kind: "gold" });
+        }
+        let seq = missionsDone * 10 + missions.length;
+        while (missions.length < MISSION_COUNT) {
+          missions = [...missions, newMission(ctx, income, Math.random, missions.map((m) => m.kind), seq++)];
+        }
+        set({ capital, totalEarned, freePulls, toasts: toasts.slice(-4), achievements: [...s.achievements, ...fresh.map((a) => a.id)], missions, missionsDone });
         cloudHooks.onChange?.();
       },
+
+      noteShake: () => set({ shakenAt: Date.now() }),
 
       dismissOffline: () => set({ offline: null }),
       clearLastPull: () => set({ lastPull: null }),
@@ -372,6 +406,8 @@ export const useGame = create<GameState>()(
           freePulls: s.freePulls,
           orders: s.orders,
           achievements: s.achievements,
+          missions: s.missions,
+          missionsDone: s.missionsDone,
         };
         return serializeSave(data);
       },
@@ -393,6 +429,8 @@ export const useGame = create<GameState>()(
           boosts: r.data.boosts ?? [],
           freePulls: r.data.freePulls ?? 0,
           orders: Math.min(ORDERS_MAX, r.data.orders ?? ORDERS_MAX),
+          missions: (r.data.missions ?? []).filter(isMission),
+          missionsDone: r.data.missionsDone ?? 0,
           achievements: (r.data.achievements ?? []).filter((id) => ACHIEVEMENT_BY_ID.has(id)),
           news: { offer: null, nextAt: 0 },
           lastPull: null,
@@ -418,6 +456,8 @@ export const useGame = create<GameState>()(
         boosts: s.boosts,
         freePulls: s.freePulls,
         orders: s.orders,
+        missions: s.missions,
+        missionsDone: s.missionsDone,
         achievements: s.achievements,
         news: s.news,
       }),
@@ -432,6 +472,8 @@ export const useGame = create<GameState>()(
           freePulls: p.freePulls ?? 0,
           achievements: p.achievements ?? [],
           orders: Math.min(ORDERS_MAX, p.orders ?? ORDERS_MAX),
+          missions: Array.isArray(p.missions) ? p.missions.filter(isMission) : [],
+          missionsDone: p.missionsDone ?? 0,
           news: p.news ?? { offer: null, nextAt: 0 },
         };
       },

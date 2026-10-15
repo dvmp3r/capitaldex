@@ -33,6 +33,8 @@ export interface AchievementContext {
   upgradeLevels: number;
   maxedSeries: number;
   byRarity: Record<Rarity, number>;
+  /** Empresas distintas por sector */
+  bySector: Record<string, number>;
 }
 
 const A = (id: string, title: string, description: string, reward: Reward, metric: (c: AchievementContext) => number, target: number): Achievement => ({

@@ -104,26 +104,20 @@ export class GachaSim {
   constructor() {
     this.seedCapsules();
     // Dejar que las cápsulas se asienten antes de que se vea la máquina.
-    for (let i = 0; i < 150; i++) this.step(1 / 60);
+    for (let i = 0; i < 240; i++) this.step(1 / 60);
   }
 
   private seedCapsules() {
     const { min, max } = GEOM.chamber;
     const r = GEOM.capR;
     this.caps = [];
-    // Rejilla con algo de azar: sin solapes de partida, la pila cae ordenada.
-    const cols = Math.floor((max.x - min.x) / (2 * r + 0.01));
-    const rows = Math.floor((max.z - min.z) / (2 * r + 0.01));
+    // Caen desordenadas desde distintas alturas y se asientan solas: pila natural, no una rejilla.
     for (let i = 0; i < CAP_COUNT; i++) {
-      const layer = Math.floor(i / (cols * rows));
-      const idx = i % (cols * rows);
-      const cx = idx % cols;
-      const cz = Math.floor(idx / cols);
       this.caps.push({
         p: v3(
-          min.x + r + 0.005 + cx * (2 * r + 0.01) + (this.rng() - 0.5) * 0.006,
-          min.y + r + 0.2 + layer * (2 * r + 0.02) + this.rng() * 0.1,
-          min.z + r + 0.005 + cz * (2 * r + 0.01) + (this.rng() - 0.5) * 0.006,
+          min.x + r + this.rng() * (max.x - min.x - 2 * r),
+          min.y + r + 0.05 + i * 0.045 + this.rng() * 0.04,
+          min.z + r + this.rng() * (max.z - min.z - 2 * r),
         ),
         v: v3(),
         rot: v3(this.rng() * 6, this.rng() * 6, this.rng() * 6),

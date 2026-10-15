@@ -26,6 +26,11 @@ export const GACHA_ODDS: Record<Rarity, number> = {
 };
 
 
+/** Agitar la máquina (arrastrarla con ganas) justo antes de abrir: épica y legendaria × este factor, una vez. */
+export const SHAKE_ODDS_BONUS = 1.25;
+export const SHAKE_WINDOW_MS = 12_000;
+/** Por debajo de esta probabilidad de común no se puede bajar con mejoras de suerte. */
+export const ODDS_MIN_COMMON = 0.2;
 export const FREE_PULLS = 3;
 export const PULL_BASE_COST = 100;
 /**
