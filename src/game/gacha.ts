@@ -4,9 +4,10 @@ import { RARITIES, type Company, type GachaState, type Rarity } from "./types";
 
 export const INITIAL_GACHA: GachaState = { pulls: 0, sinceEpic: 0, sinceLegendary: 0 };
 
-export function pullCost(pulls: number): number {
+/** Coste de la siguiente cartera; `costMult` aplica los descuentos del bróker (1 = sin descuento). */
+export function pullCost(pulls: number, costMult = 1): number {
   if (pulls < FREE_PULLS) return 0;
-  return Math.round(PULL_BASE_COST * Math.pow(PULL_COST_GROWTH, pulls - FREE_PULLS));
+  return Math.round(PULL_BASE_COST * Math.pow(PULL_COST_GROWTH, pulls - FREE_PULLS) * costMult);
 }
 
 /** Sortea una rareza según las probabilidades. rng debe devolver [0, 1). */

@@ -5,7 +5,7 @@ import { pullCost } from "../game/gacha";
 import { rarityLabel } from "../game/rarity";
 import { RARITIES, type Rarity } from "../game/types";
 import { t } from "../i18n";
-import { useGame } from "../store/gameStore";
+import { useGame, useMults } from "../store/gameStore";
 import { RARITY_INK } from "./CompanyCard";
 import { GachaStage, type StagePhase } from "./GachaStage";
 
@@ -14,11 +14,13 @@ export function GachaPanel() {
   const gacha = useGame((s) => s.gacha);
   const lastPull = useGame((s) => s.lastPull);
   const openPack = useGame((s) => s.openPack);
+  const freePulls = useGame((s) => s.freePulls);
+  const mults = useMults();
   const [revealKey, setRevealKey] = useState(0);
   const [phase, setPhase] = useState<StagePhase>("idle");
 
-  const cost = pullCost(gacha.pulls);
-  const freeLeft = Math.max(0, FREE_PULLS - gacha.pulls);
+  const freeLeft = Math.max(0, FREE_PULLS - gacha.pulls) + freePulls;
+  const cost = freeLeft > 0 ? 0 : pullCost(gacha.pulls, mults.gachaCost);
   const canAfford = capital >= cost;
   const busy = phase === "turning" || phase === "dropping" || phase === "opening";
   const legendary = lastPull?.rarity === "legendaria";

@@ -49,6 +49,14 @@ export interface Stats {
   startedAt: number;
 }
 
+/** Impulso temporal de una noticia de última hora. */
+export interface ActiveBoost {
+  id: string;
+  headline: string;
+  effect: import("./upgrades").UpgradeEffect;
+  until: number; // epoch ms
+}
+
 /** Forma de la partida guardada (localStorage y archivos exportados). */
 export interface SaveData {
   version: number;
@@ -59,6 +67,10 @@ export interface SaveData {
   gacha: GachaState;
   lastTick: number;
   stats: Stats;
+  /** Desde la versión 2 */
+  upgrades?: string[];
+  boosts?: ActiveBoost[];
+  freePulls?: number;
 }
 
 export interface SetProgress {

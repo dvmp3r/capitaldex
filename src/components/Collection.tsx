@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { COMPANIES, COUNTRIES, SECTORS } from "../data/companies";
 import { companyIncome } from "../game/economy";
 import { RARITY_RANK, rarityLabel, rarityOf } from "../game/rarity";
@@ -9,6 +9,7 @@ import { CompanyCard } from "./CompanyCard";
 import { IndexSets } from "./IndexSets";
 
 type Sort = "cap" | "income" | "shares" | "name";
+const PAGE = 60;
 
 export function Collection() {
   const holdings = useGame((s) => s.holdings);
@@ -19,6 +20,8 @@ export function Collection() {
   const [query, setQuery] = useState("");
   const [onlyOwned, setOnlyOwned] = useState(false);
   const [sort, setSort] = useState<Sort>("cap");
+  const [limit, setLimit] = useState(PAGE);
+  useEffect(() => setLimit(PAGE), [rarity, index, sector, country, query, onlyOwned, sort]);
 
   const owned = Object.keys(holdings).length;
 
@@ -44,6 +47,7 @@ export function Collection() {
   }, [holdings, rarity, index, sector, country, query, onlyOwned, sort]);
 
   const ownedInList = list.filter((c) => holdings[c.id]).length;
+  const shown = list.slice(0, limit);
 
   return (
     <section aria-labelledby="coleccion-h" className="min-w-0">
@@ -92,11 +96,16 @@ export function Collection() {
         <>
           <p className="num mt-4 text-xs text-muted">{t("collection.inView", { owned: ownedInList, total: list.length })}</p>
           <div className="mt-2 grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
-            {list.map((c) => {
+            {shown.map((c) => {
               const shares = holdings[c.id]?.shares ?? 0;
               return <CompanyCard key={c.id} company={c} shares={shares} hidden={shares === 0} interactive={shares > 0} size="sm" />;
             })}
           </div>
+          {list.length > limit && (
+            <button onClick={() => setLimit((l) => l + PAGE)} className="btn-ghost mt-4 h-10 w-full text-sm">
+              {t("collection.showMore", { n: Math.min(PAGE, list.length - limit) })}
+            </button>
+          )}
         </>
       )}
     </section>

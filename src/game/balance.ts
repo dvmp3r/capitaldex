@@ -5,15 +5,15 @@
  */
 import type { Rarity } from "./types";
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2; // 2: mejoras (titulares), impulsos de noticias y carteras gratis
 export const TICK_MS = 250;
 
 /** Capitalización mínima en USD para cada rareza (común = resto). */
 export const RARITY_THRESHOLDS_USD: Record<Exclude<Rarity, "comun">, number> = {
-  legendaria: 1.2e12,
-  epica: 3.5e11,
-  rara: 1.5e11,
-  poco_comun: 5.5e10,
+  legendaria: 1e12,
+  epica: 2.5e11,
+  rara: 8e10,
+  poco_comun: 2.5e10,
 };
 
 /** Probabilidad de cada rareza en una cartera. Deben sumar 1. */
@@ -58,8 +58,19 @@ export const INDEX_SETS: { id: string; name: string; bonus: number }[] = [
   { id: "DOW30", name: "Dow Jones 30", bonus: 0.25 },
   { id: "IBEX35", name: "IBEX 35", bonus: 0.25 },
   { id: "DAX40", name: "DAX 40", bonus: 0.25 },
+  { id: "CAC40", name: "CAC 40", bonus: 0.25 },
+  { id: "FTSEMIB", name: "FTSE MIB", bonus: 0.25 },
+  { id: "AEX", name: "AEX 25", bonus: 0.2 },
+  { id: "SMI", name: "SMI 20", bonus: 0.2 },
+  { id: "OMXS30", name: "OMX Estocolmo 30", bonus: 0.2 },
   { id: "EUROSTOXX50", name: "Euro Stoxx 50", bonus: 0.3 },
+  { id: "FTSE100", name: "FTSE 100", bonus: 0.4 },
   { id: "NASDAQ100", name: "Nasdaq-100", bonus: 0.4 },
-  { id: "UK_TOP", name: "Reino Unido Top 20", bonus: 0.15 },
+  { id: "SP500", name: "S&P 500", bonus: 1.0 },
+  { id: "TSX60", name: "TSX 60", bonus: 0.3 },
+  { id: "IPC", name: "IPC México", bonus: 0.25 },
+  { id: "HANGSENG", name: "Hang Seng", bonus: 0.4 },
+  { id: "NIFTY50", name: "Nifty 50", bonus: 0.3 },
+  { id: "ASX50", name: "ASX 50", bonus: 0.3 },
   { id: "ASIA_TOP", name: "Asia y Oriente Medio", bonus: 0.2 },
 ];

@@ -68,6 +68,12 @@ for name, lst in INDICES.items():
 for t in USA_EXTRA + EUROPA_EXTRA:
     universe.setdefault(t, set())
 
+# Componentes de índices descargados de Wikipedia (scripts/fetch_constituents.py)
+UNIVERSE_FILE = RAW / "universe.json"
+if UNIVERSE_FILE.exists():
+    for t, idxs in json.loads(UNIVERSE_FILE.read_text(encoding="utf-8")).items():
+        universe.setdefault(t, set()).update(idxs)
+
 FIELDS = ["longName", "shortName", "sector", "industry", "country", "city", "exchange", "currency",
           "marketCap", "netIncomeToCommon", "totalRevenue", "dividendYield", "trailingPE",
           "fullTimeEmployees", "website", "regularMarketPrice", "currentPrice"]
@@ -91,21 +97,32 @@ def fetch(ticker: str) -> dict:
 
 def main() -> None:
     tickers = sorted(universe)
-    print(f"{len(tickers)} tickers", flush=True)
+    out_file = RAW / "yahoo_info.json"
+    previous: dict[str, dict] = {}
+    if out_file.exists():
+        previous = {r["ticker"]: r for r in json.loads(out_file.read_text(encoding="utf-8")) if "error" not in r}
+    # Incremental: solo se descargan los tickers nuevos; los ya descargados conservan sus datos y actualizan sus índices.
+    pending = [t for t in tickers if t not in previous]
+    print(f"{len(tickers)} tickers, {len(previous)} ya descargados, {len(pending)} pendientes", flush=True)
     rows = []
     with ThreadPoolExecutor(max_workers=3) as ex:
-        for i, row in enumerate(ex.map(fetch, tickers), 1):
+        for i, row in enumerate(ex.map(fetch, pending), 1):
             rows.append(row)
             if i % 25 == 0:
-                print(f"  {i}/{len(tickers)}", flush=True)
-    (RAW / "yahoo_info.json").write_text(json.dumps(rows, indent=1, ensure_ascii=False), encoding="utf-8")
+                print(f"  {i}/{len(pending)}", flush=True)
+                merged = {**previous, **{r["ticker"]: r for r in rows if "error" not in r}}
+                out_file.write_text(json.dumps(list(merged.values()), indent=1, ensure_ascii=False), encoding="utf-8")
+    for t, r in previous.items():
+        r["indices"] = sorted(universe.get(t, set()))
+    merged = {**previous, **{r["ticker"]: r for r in rows if "error" not in r}}
+    out_file.write_text(json.dumps(list(merged.values()), indent=1, ensure_ascii=False), encoding="utf-8")
     errs = [r["ticker"] for r in rows if "error" in r]
-    print(f"OK {len(rows) - len(errs)}  errores {len(errs)}: {errs}", flush=True)
+    print(f"OK {len(merged)} en total, errores {len(errs)}: {errs[:40]}", flush=True)
 
     # Tipos de cambio a USD (1 unidad de moneda local = X USD)
     pairs = {"EUR": "EURUSD=X", "GBP": "GBPUSD=X", "CHF": "CHFUSD=X", "DKK": "DKKUSD=X", "SEK": "SEKUSD=X",
              "NOK": "NOKUSD=X", "JPY": "JPYUSD=X", "HKD": "HKDUSD=X", "KRW": "KRWUSD=X", "TWD": "TWDUSD=X",
-             "INR": "INRUSD=X", "SAR": "SARUSD=X", "CNY": "CNYUSD=X", "AUD": "AUDUSD=X"}
+             "INR": "INRUSD=X", "SAR": "SARUSD=X", "CNY": "CNYUSD=X", "AUD": "AUDUSD=X", "CAD": "CADUSD=X", "MXN": "MXNUSD=X", "BRL": "BRLUSD=X"}
     fx = {"USD": 1.0}
     for cur, sym in pairs.items():
         try:

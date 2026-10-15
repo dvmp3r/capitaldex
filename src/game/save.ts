@@ -45,6 +45,14 @@ export function parseSave(text: string): ParseResult {
       return { ok: false, error: t("save.invalidCompany", { id }) };
     }
   }
+  // Campos de la versión 2 (opcionales en partidas antiguas)
+  if (d.upgrades !== undefined && !(Array.isArray(d.upgrades) && d.upgrades.every((u) => typeof u === "string"))) {
+    return { ok: false, error: t("save.invalidField", { field: "upgrades" }) };
+  }
+  if (d.boosts !== undefined && !(Array.isArray(d.boosts) && d.boosts.every((b) => isRecord(b) && typeof b.id === "string" && isFiniteNumber(b.until) && isRecord(b.effect)))) {
+    return { ok: false, error: t("save.invalidField", { field: "boosts" }) };
+  }
+  if (d.freePulls !== undefined && !isInt(d.freePulls)) return { ok: false, error: t("save.invalidField", { field: "freePulls" }) };
   return { ok: true, data: d as unknown as SaveData };
 }
 

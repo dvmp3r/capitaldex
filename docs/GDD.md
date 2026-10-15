@@ -45,15 +45,15 @@ Cada carta muestra: ticker, nombre, sector, país, bolsa, capitalización, ingre
 
 La rareza depende de la **capitalización bursátil en dólares**. Los umbrales viven en `src/game/balance.ts` (la verdad del juego) y se replican en la hoja `Umbrales` del Excel para analizar el reparto. La hoja permite además forzar una rareza manual o excluir una empresa.
 
-| Rareza | Capitalización (USD) | Color | Reparto real (15-oct-2026) |
+| Rareza | Capitalización (USD) | Color | Reparto real (15-oct-2026, 1 100 empresas) |
 |---|---|---|---|
-| Legendaria | ≥ 1,2 billones (1,2 T) | dorado | ~3 % |
-| Épica | 350 000 M – 1,2 T | morado | ~6 % |
-| Rara | 150 000 M – 350 000 M | azul | ~20 % |
-| Poco común | 55 000 M – 150 000 M | verde | ~40 % |
-| Común | < 55 000 M | gris | ~30 % |
+| Legendaria | ≥ 1 billón (1 T) | dorado | ~1 % |
+| Épica | 250 000 M – 1 T | morado | ~5 % |
+| Rara | 80 000 M – 250 000 M | azul | ~18 % |
+| Poco común | 25 000 M – 80 000 M | verde | ~36 % |
+| Común | < 25 000 M | plateado | ~39 % |
 
-El universo inicial está sesgado hacia las grandes (son las que forman los índices), por eso los umbrales son más altos que en un reparto por capitalización general. Si se añaden empresas pequeñas en fases posteriores, los umbrales bajarán. Cuando el reparto se desvíe, se ajustan los umbrales, no la lista.
+Universo v0.6: S&P 500 completo, Nasdaq-100, Dow 30, FTSE 100, CAC 40, DAX 40, IBEX 35, FTSE MIB, AEX, SMI, OMX 30, Euro Stoxx 50, Hang Seng, Nifty 50, TSX 60, ASX 50, IPC México y grandes de Asia (`scripts/fetch_constituents.py` + `fetch_companies.py`). Cuando el reparto se desvíe, se ajustan los umbrales, no la lista.
 
 ### Rareza viva
 
@@ -146,6 +146,26 @@ Completar un conjunto da un multiplicador global permanente mientras se mantenga
 | Asia y Oriente Medio | 24 | +20 % |
 
 Fase 2: sets por **sector** (5 empresas de un mismo sector: +5 % a ese sector) y por **país**. Fase 3: sets temáticos de temporada ("las siete magníficas", "bancos europeos", "petroleras").
+
+## 6 bis. Titulares y noticias (el bucle idle, v0.6)
+
+Es el corazón del juego idle: ganar capital → comprar titulares → ganar más rápido.
+
+**Titulares (mejoras permanentes).** Se compran con capital en la pestaña Mercado y se presentan como noticias de prensa. Series con tres escalones y requisitos crecientes (empresas de ese grupo y el titular anterior):
+
+| Serie | Ejemplo | Efecto | Costes (escalones) |
+|---|---|---|---|
+| Sector (11) | "Rumores de acuerdo entre EE. UU. e Irán" | Energía ×2, ×2, ×3 | 1,5 k · 40 k · 1,2 M |
+| Región (5) | "La Reserva Federal baja tipos" | EE. UU. ×2, ×2, ×3 | 8 k · 250 k · 6 M |
+| Rareza (5) | "El club del billón de dólares" | Legendarias ×2, ×3 | según rareza |
+| Mercado (global) | "Rally de fin de año" | Todo ×2, ×2, ×3, ×3 | 20 k · 500 k · 15 M · 400 M |
+| Bróker | "Tu bróker te rebaja las comisiones" | Carteras −10 %, −15 %, −20 % | 5 k · 150 k · 4 M |
+| Mesa de operaciones | "Terminal profesional" | Operar +10 s, +30 s, +120 s; offline 75 %, 100 %, 24 h | 2,5 k … 2,5 M |
+| Agencia de noticias | "Suscripción a la agencia" | Noticias ×1,5 de frecuencia, duración ×1,5, frecuencia ×2 | 30 k · 120 k · 3 M |
+
+Definiciones en `src/game/upgrades.ts`. Los multiplicadores se componen: ingresos de una empresa = base × acciones × hitos × global × sector × región × rareza; después el multiplicador de sets.
+
+**Noticias de última hora (temporales).** Cada 150-330 s aparece una noticia abajo a la derecha durante 20 s. Si el jugador la aprovecha: impulso ×3 a un sector o región durante 60 s, "todo ×2" 45 s, un dividendo extraordinario (5-10 min de ingresos) o una cartera de regalo. Si no está, la pierde: premia la presencia, como las galletas doradas de Cookie Clicker. Definiciones en `src/game/news.ts`.
 
 ## 7. El mercado real en el juego (fase 2 y 3)
 

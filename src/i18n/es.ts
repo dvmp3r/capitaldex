@@ -128,6 +128,7 @@ export const es = {
     emptyTitle: "Nada con esos filtros",
     emptyOwned: "Abre carteras para descubrir empresas de este grupo.",
     emptyFilters: "Prueba con otro índice, sector o rareza.",
+    showMore: "Mostrar {n} más",
   },
   sets: {
     all: "Todas",
@@ -137,5 +138,35 @@ export const es = {
   offline: {
     message: "Mientras no estabas ({time}) tus empresas generaron",
     ok: "Entendido",
+  },
+  tabs: {
+    collection: "Colección",
+    market: "Mercado",
+  },
+  market: {
+    title: "Mercado",
+    intro: "Compra titulares: cada uno multiplica para siempre los ingresos de un grupo de empresas, o mejora tu bróker, tu mesa de operaciones y tus noticias.",
+    multipliers: "Tus multiplicadores",
+    noMultipliers: "Todavía sin titulares. El primero suele ser el más barato de tu sector más grande.",
+    available: "En portada",
+    locked: "Próximos titulares",
+    owned: "Hemeroteca",
+    ownedCount: "{n} comprados",
+    buy: "Comprar",
+    noneAvailable: "Nada que comprar ahora mismo. Abre más carteras o espera a reunir capital.",
+    clickSeconds: "Operar = {n} s de ingresos",
+    offline: "Offline {rate} % hasta {hours} h",
+    gacha: "Carteras −{pct} %",
+    newsFreq: "Noticias ×{n}",
+  },
+  news: {
+    breaking: "Última hora",
+    take: "Aprovechar",
+    dismiss: "Ignorar",
+    boost: "{label} durante {sec} s",
+    capital: "Cobras el equivalente a {min} min de ingresos",
+    freePull: "Una cartera gratis",
+    active: "Impulsos activos",
+    freePullsLeft: "{n} carteras de regalo",
   },
 } as const;

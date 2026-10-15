@@ -26,10 +26,10 @@ JSON_OUT = ROOT / "src" / "data" / "companies.json"
 
 # --- Parámetros de juego (copia de src/game/balance.ts) -------------------------
 THRESHOLDS_M_USD = [  # (etiqueta Excel, clave JSON, cap. mínima en millones USD, probabilidad gacha)
-    ("Legendaria", "legendaria", 1_200_000, 0.01),
-    ("Épica", "epica", 350_000, 0.05),
-    ("Rara", "rara", 150_000, 0.12),
-    ("Poco común", "poco_comun", 55_000, 0.27),
+    ("Legendaria", "legendaria", 1_000_000, 0.01),
+    ("Épica", "epica", 250_000, 0.05),
+    ("Rara", "rara", 80_000, 0.12),
+    ("Poco común", "poco_comun", 25_000, 0.27),
     ("Común", "comun", 0, 0.55),
 ]
 INCOME_COEF = 0.05
@@ -48,6 +48,7 @@ COUNTRY_CODE = {
     "South Korea": "KR", "Finland": "FI", "Hong Kong": "HK", "Saudi Arabia": "SA", "Belgium": "BE",
     "Norway": "NO", "Uruguay": "UY", "Luxembourg": "LU", "Taiwan": "TW", "Austria": "AT",
     "Portugal": "PT", "Singapore": "SG", "Brazil": "BR", "Mexico": "MX", "Israel": "IL",
+    "Bermuda": "BM", "New Zealand": "NZ", "Macau": "MO", "South Africa": "ZA", "Greece": "GR", "Cayman Islands": "KY", "Jersey": "JE",
 }
 LABEL_TO_KEY = {label: key for label, key, _, _ in THRESHOLDS_M_USD}
 

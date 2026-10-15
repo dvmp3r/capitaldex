@@ -5,9 +5,12 @@ import { BY_ID, INDEX_MEMBERS, POOL } from "../data/companies";
 import { OFFLINE_MIN_SECONDS, SAVE_VERSION } from "../game/balance";
 import { clickValue, offlineEarnings, totalIncome, type IncomeBreakdown } from "../game/economy";
 import { INITIAL_GACHA, pullCost, rollPull } from "../game/gacha";
-import { RARITY_RANK } from "../game/rarity";
+import { NEWS_OFFER_SEC, pickNews, scheduleNext, type NewsItem } from "../game/news";
+import { RARITY_RANK, rarityOf } from "../game/rarity";
+import { regionOf } from "../game/regions";
 import { parseSave, serializeSave, type ParseResult } from "../game/save";
-import type { GachaState, Holdings, PullResult, SaveData, Stats } from "../game/types";
+import type { ActiveBoost, GachaState, Holdings, PullResult, Rarity, SaveData, Stats } from "../game/types";
+import { computeMultipliers, requirementMet, UPGRADE_BY_ID, type Multipliers, type PlayerContext } from "../game/upgrades";
 
 export type { Stats } from "../game/types";
 
@@ -23,6 +26,11 @@ export interface Settings {
   introSeen: boolean;
 }
 
+export interface NewsOffer {
+  item: NewsItem;
+  expiresAt: number;
+}
+
 export interface GameState {
   capital: number;
   totalEarned: number;
@@ -31,6 +39,14 @@ export interface GameState {
   lastTick: number;
   stats: Stats;
   settings: Settings;
+  /** Titulares comprados (ids de mejoras) */
+  upgrades: string[];
+  /** Impulsos temporales activos */
+  boosts: ActiveBoost[];
+  /** Carteras gratis pendientes (regalos de noticias) */
+  freePulls: number;
+  /** Noticias: oferta en pantalla y momento de la siguiente */
+  news: { offer: NewsOffer | null; nextAt: number };
   /** Transitorio (no se guarda) */
   lastPull: PullResult | null;
   offline: OfflineReport | null;
@@ -38,6 +54,9 @@ export interface GameState {
   tick: (now?: number) => void;
   openPack: () => PullResult | null;
   work: () => void;
+  buyUpgrade: (id: string) => boolean;
+  acceptNews: () => void;
+  dismissNews: () => void;
   dismissOffline: () => void;
   clearLastPull: () => void;
   reset: () => void;
@@ -56,13 +75,39 @@ function initialState(now = Date.now()) {
     gacha: INITIAL_GACHA,
     lastTick: now,
     stats: { clicks: 0, bestRarityRank: -1, playSeconds: 0, startedAt: now },
+    upgrades: [] as string[],
+    boosts: [] as ActiveBoost[],
+    freePulls: 0,
+    news: { offer: null as NewsOffer | null, nextAt: 0 },
     lastPull: null,
     offline: null,
   };
 }
 
-export function incomeOf(holdings: Holdings): IncomeBreakdown {
-  return totalIncome(holdings, BY_ID, INDEX_MEMBERS);
+/** Multiplicadores vigentes de una partida. */
+export function multsOf(upgrades: string[], boosts: ActiveBoost[], now = Date.now()): Multipliers {
+  return computeMultipliers(upgrades, boosts, now);
+}
+
+export function incomeOf(holdings: Holdings, mults: Multipliers): IncomeBreakdown {
+  return totalIncome(holdings, BY_ID, INDEX_MEMBERS, mults);
+}
+
+/** Contexto para los requisitos de las mejoras. */
+export function contextOf(holdings: Holdings, pulls: number, upgrades: string[]): PlayerContext {
+  const bySector: Record<string, number> = {};
+  const byRegion = { US: 0, EU: 0, ASIA: 0, LATAM: 0, OTHER: 0 };
+  const byRarity: Record<Rarity, number> = { comun: 0, poco_comun: 0, rara: 0, epica: 0, legendaria: 0 };
+  let companies = 0;
+  for (const id of Object.keys(holdings)) {
+    const c = BY_ID.get(id);
+    if (!c) continue;
+    companies++;
+    bySector[c.sector] = (bySector[c.sector] ?? 0) + 1;
+    byRegion[regionOf(c.countryCode)]++;
+    byRarity[rarityOf(c)]++;
+  }
+  return { companies, pulls, bySector, byRegion, byRarity, owned: new Set(upgrades) };
 }
 
 export const useGame = create<GameState>()(
@@ -77,46 +122,59 @@ export const useGame = create<GameState>()(
         const s = get();
         const dt = (now - s.lastTick) / 1000;
         if (dt <= 0) return;
-        const income = incomeOf(s.holdings).total;
+        const mults = multsOf(s.upgrades, s.boosts, now);
+        const income = incomeOf(s.holdings, mults).total;
+
         if (dt >= OFFLINE_MIN_SECONDS) {
-          // Ausencia: progreso offline con penalización y tope.
-          const report = offlineEarnings(income, dt);
+          // Ausencia: progreso offline con penalización y tope; las noticias se reprograman.
+          const report = offlineEarnings(income, dt, mults.offlineRate, mults.offlineCapSeconds);
           set({
             capital: s.capital + report.earned,
             totalEarned: s.totalEarned + report.earned,
             lastTick: now,
             offline: report.earned > 0 ? report : null,
+            boosts: s.boosts.filter((b) => b.until > now),
+            news: { offer: null, nextAt: scheduleNext(now, Math.random, mults.newsFrequency) },
           });
           return;
         }
+
         const earned = income * dt;
-        set({
+        const patch: Partial<GameState> = {
           capital: s.capital + earned,
           totalEarned: s.totalEarned + earned,
           lastTick: now,
           stats: { ...s.stats, playSeconds: s.stats.playSeconds + dt },
-        });
+        };
+        if (s.boosts.some((b) => b.until <= now)) patch.boosts = s.boosts.filter((b) => b.until > now);
+
+        // Noticias de última hora
+        const news = s.news;
+        if (news.offer && now > news.offer.expiresAt) {
+          patch.news = { offer: null, nextAt: scheduleNext(now, Math.random, mults.newsFrequency) };
+        } else if (!news.offer && (news.nextAt === 0 || now >= news.nextAt)) {
+          if (news.nextAt === 0) patch.news = { offer: null, nextAt: scheduleNext(now, Math.random, mults.newsFrequency) };
+          else patch.news = { offer: { item: pickNews(Math.random), expiresAt: now + NEWS_OFFER_SEC * 1000 }, nextAt: 0 };
+        }
+        set(patch);
       },
 
       openPack: () => {
         const s = get();
-        const cost = pullCost(s.gacha.pulls);
+        const mults = multsOf(s.upgrades, s.boosts);
+        const free = s.freePulls > 0;
+        const cost = free ? 0 : pullCost(s.gacha.pulls, mults.gachaCost);
         if (s.capital < cost) return null;
         const roll = rollPull(POOL, s.gacha);
         const now = Date.now();
         const prev = s.holdings[roll.company.id];
         const shares = (prev?.shares ?? 0) + 1;
-        const result: PullResult = {
-          company: roll.company,
-          rarity: roll.rarity,
-          isNew: !prev,
-          shares,
-          pity: roll.pity,
-        };
+        const result: PullResult = { company: roll.company, rarity: roll.rarity, isNew: !prev, shares, pity: roll.pity };
         set({
           capital: s.capital - cost,
           holdings: { ...s.holdings, [roll.company.id]: { shares, firstAt: prev?.firstAt ?? now } },
           gacha: roll.next,
+          freePulls: free ? s.freePulls - 1 : s.freePulls,
           lastPull: result,
           stats: { ...s.stats, bestRarityRank: Math.max(s.stats.bestRarityRank, RARITY_RANK[roll.rarity]) },
         });
@@ -125,12 +183,45 @@ export const useGame = create<GameState>()(
 
       work: () => {
         const s = get();
-        const gain = clickValue(incomeOf(s.holdings).total);
-        set({
-          capital: s.capital + gain,
-          totalEarned: s.totalEarned + gain,
-          stats: { ...s.stats, clicks: s.stats.clicks + 1 },
-        });
+        const mults = multsOf(s.upgrades, s.boosts);
+        const gain = clickValue(incomeOf(s.holdings, mults).total, mults.clickSeconds);
+        set({ capital: s.capital + gain, totalEarned: s.totalEarned + gain, stats: { ...s.stats, clicks: s.stats.clicks + 1 } });
+      },
+
+      buyUpgrade: (id) => {
+        const s = get();
+        const u = UPGRADE_BY_ID.get(id);
+        if (!u || s.upgrades.includes(id) || s.capital < u.cost) return false;
+        if (!requirementMet(u.requires, contextOf(s.holdings, s.gacha.pulls, s.upgrades))) return false;
+        set({ capital: s.capital - u.cost, upgrades: [...s.upgrades, id] });
+        return true;
+      },
+
+      acceptNews: () => {
+        const s = get();
+        const offer = s.news.offer;
+        if (!offer) return;
+        const now = Date.now();
+        const mults = multsOf(s.upgrades, s.boosts, now);
+        const item = offer.item;
+        const patch: Partial<GameState> = { news: { offer: null, nextAt: scheduleNext(now, Math.random, mults.newsFrequency) } };
+        if (item.kind === "boost") {
+          const boost: ActiveBoost = { id: item.id, headline: item.headline, effect: item.effect, until: now + item.durationSec * mults.newsDuration * 1000 };
+          patch.boosts = [...s.boosts.filter((b) => b.id !== item.id && b.until > now), boost];
+        } else if (item.kind === "capital") {
+          const gain = Math.max(50, incomeOf(s.holdings, mults).total * item.incomeSeconds);
+          patch.capital = s.capital + gain;
+          patch.totalEarned = s.totalEarned + gain;
+        } else if (item.kind === "freePull") {
+          patch.freePulls = s.freePulls + 1;
+        }
+        set(patch);
+      },
+
+      dismissNews: () => {
+        const s = get();
+        if (!s.news.offer) return;
+        set({ news: { offer: null, nextAt: scheduleNext(Date.now(), Math.random, multsOf(s.upgrades, s.boosts).newsFrequency) } });
       },
 
       dismissOffline: () => set({ offline: null }),
@@ -148,6 +239,9 @@ export const useGame = create<GameState>()(
           gacha: s.gacha,
           lastTick: s.lastTick,
           stats: s.stats,
+          upgrades: s.upgrades,
+          boosts: s.boosts,
+          freePulls: s.freePulls,
         };
         return serializeSave(data);
       },
@@ -165,6 +259,10 @@ export const useGame = create<GameState>()(
           gacha: r.data.gacha,
           lastTick: r.data.lastTick,
           stats: r.data.stats,
+          upgrades: (r.data.upgrades ?? []).filter((id) => UPGRADE_BY_ID.has(id)),
+          boosts: r.data.boosts ?? [],
+          freePulls: r.data.freePulls ?? 0,
+          news: { offer: null, nextAt: 0 },
           lastPull: null,
           offline: null,
         });
@@ -184,15 +282,28 @@ export const useGame = create<GameState>()(
         lastTick: s.lastTick,
         stats: s.stats,
         settings: s.settings,
+        upgrades: s.upgrades,
+        boosts: s.boosts,
+        freePulls: s.freePulls,
+        news: s.news,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<GameState>;
-        return { ...current, ...p, settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) } };
+        return {
+          ...current,
+          ...p,
+          settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) },
+          upgrades: p.upgrades ?? [],
+          boosts: p.boosts ?? [],
+          freePulls: p.freePulls ?? 0,
+          news: p.news ?? { offer: null, nextAt: 0 },
+        };
       },
       migrate: (persisted, version) => {
         // Punto único para migrar guardados antiguos cuando cambie SAVE_VERSION.
-        if (version < 1) return { ...initialState(), ...(persisted as object) };
-        return persisted as GameState;
+        const p = (persisted ?? {}) as Partial<GameState>;
+        if (version < 2) return { ...p, upgrades: [], boosts: [], freePulls: 0, news: { offer: null, nextAt: 0 } } as GameState;
+        return p as GameState;
       },
       onRehydrateStorage: () => (state) => {
         // Al cargar una partida guardada, abonar el tiempo ausente.
@@ -202,8 +313,16 @@ export const useGame = create<GameState>()(
   ),
 );
 
-/** Ingresos actuales, memorizados por referencia de holdings. */
+/** Multiplicadores vigentes, memorizados por mejoras e impulsos. */
+export function useMults(): Multipliers {
+  const upgrades = useGame((s) => s.upgrades);
+  const boosts = useGame((s) => s.boosts);
+  return useMemo(() => multsOf(upgrades, boosts), [upgrades, boosts]);
+}
+
+/** Ingresos actuales, memorizados por referencia de holdings y multiplicadores. */
 export function useIncome(): IncomeBreakdown {
   const holdings = useGame((s) => s.holdings);
-  return useMemo(() => incomeOf(holdings), [holdings]);
+  const mults = useMults();
+  return useMemo(() => incomeOf(holdings, mults), [holdings, mults]);
 }

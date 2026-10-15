@@ -36,6 +36,7 @@ describe("datos de empresas", () => {
     expect(COUNTRIES[0].code).toBe("US");
     expect(COUNTRIES.reduce((n, c) => n + c.count, 0)).toBe(COMPANIES.length);
     for (const c of COUNTRIES) expect(countryName(c.code), c.code).not.toBe(c.code);
+    expect(COUNTRIES.find((c) => c.code === "UN")?.count ?? 0).toBeLessThan(15); // empresas sin país en Yahoo
   });
 
   it("los sets de índice tienen el tamaño esperado", () => {

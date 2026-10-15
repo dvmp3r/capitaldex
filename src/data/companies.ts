@@ -24,7 +24,8 @@ const COUNTRY_NAME_ES: Record<string, string> = {
   JP: "Japón", CH: "Suiza", CN: "China", IE: "Irlanda", SE: "Suecia", IT: "Italia", IN: "India", AU: "Australia",
   DK: "Dinamarca", CA: "Canadá", KR: "Corea del Sur", FI: "Finlandia", HK: "Hong Kong", SA: "Arabia Saudí",
   BE: "Bélgica", NO: "Noruega", UY: "Uruguay", LU: "Luxemburgo", TW: "Taiwán", AT: "Austria", PT: "Portugal",
-  SG: "Singapur", BR: "Brasil", MX: "México", IL: "Israel",
+  SG: "Singapur", BR: "Brasil", MX: "México", IL: "Israel", BM: "Bermudas", NZ: "Nueva Zelanda", MO: "Macao",
+  ZA: "Sudáfrica", GR: "Grecia", KY: "Islas Caimán", JE: "Jersey", UN: "Sin país",
 };
 
 export function countryName(code: string): string {

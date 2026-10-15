@@ -31,6 +31,10 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [x] Tema oscuro definitivo y máquina v2 con animaciones por fases (Web Animations API) (15-oct-2026)
 - [x] Máquina v3 en 3D con three.js y física propia de las cápsulas; la cápsula cae con el color de la rareza (15-oct-2026)
 - [x] Cargar la escena 3D bajo demanda (code splitting) (15-oct-2026)
+- [x] Bucle idle: titulares (mejoras permanentes por sector, región, rareza, globales, bróker, mesa y noticias) y noticias de última hora temporales (15-oct-2026)
+- [x] Universo ampliado a 1 117 empresas con los índices completos de 12 mercados; colección paginada (15-oct-2026)
+- [ ] Añadir Nikkei 225 e Ibovespa (Wikipedia no tiene tabla de componentes; buscar otra fuente)
+- [ ] Reequilibrar costes de titulares con datos de juego reales (ahora son fijos, pensados para la curva de las primeras 200 carteras)
 - [x] Tutorial de 3 tiradas gratis: pistas contextuales en las primeras carteras (15-oct-2026)
 - [x] Pantalla de estadísticas (tiradas, tiempo jugado, mejor tirada) (15-oct-2026)
 - [ ] Despliegue en Cloudflare Pages con dominio provisional
