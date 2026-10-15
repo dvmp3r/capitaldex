@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { BY_ID, INDEX_MEMBERS, POOL } from "../data/companies";
-import { OFFLINE_MIN_SECONDS, SAVE_VERSION } from "../game/balance";
+import { OFFLINE_MIN_SECONDS, SAVE_VERSION, SHARE_MILESTONES } from "../game/balance";
 import { clickValue, offlineEarnings, totalIncome, type IncomeBreakdown } from "../game/economy";
 import { INITIAL_GACHA, pullCost, rollPull } from "../game/gacha";
 import { NEWS_OFFER_SEC, pickNews, scheduleNext, type NewsItem } from "../game/news";
@@ -24,6 +24,12 @@ export interface Settings {
   reducedMotion: boolean;
   /** La introducción a toda pantalla ya se ha visto (o se ha saltado). */
   introSeen: boolean;
+}
+
+export interface Toast {
+  id: number;
+  text: string;
+  kind: "info" | "gold" | "up";
 }
 
 export interface NewsOffer {
@@ -50,6 +56,9 @@ export interface GameState {
   /** Transitorio (no se guarda) */
   lastPull: PullResult | null;
   offline: OfflineReport | null;
+  toasts: Toast[];
+  pushToast: (text: string, kind?: Toast["kind"]) => void;
+  removeToast: (id: number) => void;
 
   tick: (now?: number) => void;
   openPack: () => PullResult | null;
@@ -81,8 +90,11 @@ function initialState(now = Date.now()) {
     news: { offer: null as NewsOffer | null, nextAt: 0 },
     lastPull: null,
     offline: null,
+    toasts: [] as Toast[],
   };
 }
+
+let toastSeq = 0;
 
 /** Multiplicadores vigentes de una partida. */
 export function multsOf(upgrades: string[], boosts: ActiveBoost[], now = Date.now()): Multipliers {
@@ -117,6 +129,8 @@ export const useGame = create<GameState>()(
       settings: DEFAULT_SETTINGS,
 
       setSetting: (key, value) => set({ settings: { ...get().settings, [key]: value } }),
+      pushToast: (text, kind = "info") => set({ toasts: [...get().toasts.slice(-3), { id: ++toastSeq, text, kind }] }),
+      removeToast: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),
 
       tick: (now = Date.now()) => {
         const s = get();
@@ -170,7 +184,11 @@ export const useGame = create<GameState>()(
         const prev = s.holdings[roll.company.id];
         const shares = (prev?.shares ?? 0) + 1;
         const result: PullResult = { company: roll.company, rarity: roll.rarity, isNew: !prev, shares, pity: roll.pity };
+        const milestone = SHARE_MILESTONES.find((m) => m.shares === shares);
+        const toasts = [...s.toasts.slice(-3)];
+        if (milestone) toasts.push({ id: ++toastSeq, text: `Hito: ${shares} acciones de ${roll.company.id.replace(/\.[A-Z]+$/, "")} → ×${milestone.mult}`, kind: "gold" });
         set({
+          toasts,
           capital: s.capital - cost,
           holdings: { ...s.holdings, [roll.company.id]: { shares, firstAt: prev?.firstAt ?? now } },
           gacha: roll.next,
@@ -193,7 +211,7 @@ export const useGame = create<GameState>()(
         const u = UPGRADE_BY_ID.get(id);
         if (!u || s.upgrades.includes(id) || s.capital < u.cost) return false;
         if (!requirementMet(u.requires, contextOf(s.holdings, s.gacha.pulls, s.upgrades))) return false;
-        set({ capital: s.capital - u.cost, upgrades: [...s.upgrades, id] });
+        set({ capital: s.capital - u.cost, upgrades: [...s.upgrades, id], toasts: [...s.toasts.slice(-3), { id: ++toastSeq, text: u.headline, kind: "gold" }] });
         return true;
       },
 
@@ -215,6 +233,7 @@ export const useGame = create<GameState>()(
         } else if (item.kind === "freePull") {
           patch.freePulls = s.freePulls + 1;
         }
+        patch.toasts = [...s.toasts.slice(-3), { id: ++toastSeq, text: item.headline, kind: "up" }];
         set(patch);
       },
 

@@ -97,8 +97,9 @@ export function Collection() {
           <p className="num mt-4 text-xs text-muted">{t("collection.inView", { owned: ownedInList, total: list.length })}</p>
           <div className="mt-2 grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
             {shown.map((c) => {
-              const shares = holdings[c.id]?.shares ?? 0;
-              return <CompanyCard key={c.id} company={c} shares={shares} hidden={shares === 0} interactive={shares > 0} size="sm" />;
+              const h = holdings[c.id];
+              const shares = h?.shares ?? 0;
+              return <CompanyCard key={c.id} company={c} shares={shares} hidden={shares === 0} interactive={shares > 0} isNew={!!h && Date.now() - h.firstAt < 15_000} size="sm" />;
             })}
           </div>
           {list.length > limit && (

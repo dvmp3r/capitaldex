@@ -115,7 +115,24 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
           {revealKey > 0 && <div className="card-sheen" />}
         </div>
       )}
+      {phase === "revealed" && result?.rarity === "legendaria" && <Confetti key={`c-${revealKey}`} />}
       {animating && <span className="absolute bottom-1 left-0 right-0 text-center text-[11px] text-muted">{t("gacha.skipHint")}</span>}
     </div>
+  );
+}
+
+/** 40 trocitos dorados que salen disparados desde el centro. Solo CSS. */
+function Confetti() {
+  const pieces = Array.from({ length: 40 }, (_, i) => {
+    const a = (i / 40) * Math.PI * 2 + Math.random() * 0.3;
+    const d = 90 + Math.random() * 160;
+    return { dx: Math.cos(a) * d, dy: Math.sin(a) * d - 60, rot: Math.random() * 720 - 360, delay: Math.random() * 120, hue: 80 + Math.random() * 20, l: 0.8 + Math.random() * 0.15 };
+  });
+  return (
+    <>
+      {pieces.map((p, i) => (
+        <i key={i} className="confetti" style={{ "--dx": `${p.dx}px`, "--dy": `${p.dy}px`, "--rot": `${p.rot}deg`, animationDelay: `${p.delay}ms`, background: `oklch(${p.l} 0.16 ${p.hue})` } as React.CSSProperties} />
+      ))}
+    </>
   );
 }

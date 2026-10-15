@@ -32,7 +32,7 @@ export function NewsBanner() {
   return (
     <div className="rise fixed bottom-4 right-4 z-30 w-[min(360px,calc(100vw-32px))] rounded-xl border border-line bg-surface p-4 shadow-[0_24px_48px_-16px_oklch(0_0_0/0.9)]" role="alert">
       <div className="flex items-center gap-2">
-        <span className="rounded bg-[oklch(0.62_0.22_25)] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">{t("news.breaking")}</span>
+        <span className="breaking-badge rounded bg-[oklch(0.62_0.22_25)] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">{t("news.breaking")}</span>
         <span className="num ml-auto text-xs text-muted">{Math.ceil(left)} s</span>
       </div>
       <div className="mt-2 font-sans text-[17px] font-bold leading-tight" style={{ fontVariationSettings: '"opsz" 32' }}>{item.headline}</div>

@@ -22,10 +22,12 @@ interface Props {
   hidden?: boolean;
   size?: "sm" | "lg";
   interactive?: boolean;
+  /** Conseguida hace poco: halo que respira. */
+  isNew?: boolean;
   className?: string;
 }
 
-export function CompanyCard({ company, shares = 0, hidden = false, size = "lg", interactive = false, className = "" }: Props) {
+export function CompanyCard({ company, shares = 0, hidden = false, size = "lg", interactive = false, isNew = false, className = "" }: Props) {
   const rarity = rarityOf(company);
   const big = size === "lg";
   const ticker = company.id.replace(/\.[A-Z]+$/, "");
@@ -34,7 +36,7 @@ export function CompanyCard({ company, shares = 0, hidden = false, size = "lg", 
   return (
     <article
       data-rarity={rarity}
-      className={`card ${hidden ? "is-hidden" : ""} ${interactive ? "card-interactive" : ""} ${className}`}
+      className={`card ${hidden ? "is-hidden" : ""} ${interactive ? "card-interactive" : ""} ${isNew ? "card-new" : ""} ${className}`}
       aria-label={hidden ? t("card.undiscoveredAria", { rarity: rarityLabel(rarity), sector: company.sector }) : `${company.name}, ${rarityLabel(rarity)}`}
     >
       {/* Cabecera: ticker + país */}

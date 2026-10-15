@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTween } from "../hooks/useTween";
 import { clickValue } from "../game/economy";
 import { fmt, fmtCapital, fmtMult } from "../game/format";
 import { rarityLabel } from "../game/rarity";
@@ -14,6 +15,27 @@ export function Header() {
   const freePulls = useGame((s) => s.freePulls);
   const income = useIncome();
   const mults = useMults();
+  const shown = useTween(capital, 12);
+  const [floats, setFloats] = useState<{ id: number; text: string; x: number }[]>([]);
+  const seq = useRef(0);
+  const [pop, setPop] = useState(0);
+  const lastCapital = useRef(capital);
+
+  // Entrada grande de capital (noticia, Operar, offline): el número da un salto.
+  useEffect(() => {
+    const jump = capital - lastCapital.current;
+    lastCapital.current = capital;
+    if (jump > Math.max(10, income.total * 2)) setPop((n) => n + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [capital]);
+
+  const onWork = () => {
+    const gain = clickValue(income.total, mults.clickSeconds);
+    work();
+    const id = ++seq.current;
+    setFloats((f) => [...f.slice(-5), { id, text: `+${fmt(gain)}`, x: 30 + Math.random() * 40 }]);
+    window.setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 950);
+  };
 
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-bg/95 backdrop-blur-sm">
@@ -25,7 +47,7 @@ export function Header() {
 
         <div className="order-3 col-span-2 flex items-baseline gap-4 sm:order-2 sm:col-span-1 sm:ml-auto sm:gap-5">
           <div className="sm:text-right">
-            <div className="num whitespace-nowrap text-[20px] font-bold leading-none sm:text-[26px]">{fmtCapital(capital)}</div>
+            <div key={pop} className={`num whitespace-nowrap text-[20px] font-bold leading-none sm:text-[26px] ${pop ? "pop" : ""}`}>{fmtCapital(shown)}</div>
             <div className="mt-0.5 text-[11px] text-muted">{t("header.capital")}</div>
           </div>
           <div className="sm:text-right">
@@ -41,9 +63,14 @@ export function Header() {
         </div>
 
         <div className="order-2 flex items-center gap-2 sm:order-3">
-          <button onClick={work} className="btn-primary h-9 shrink-0 whitespace-nowrap px-3 text-sm sm:h-10 sm:px-4" title={t("header.workTitle")}>
-            {t("header.work")} <span className="num font-semibold opacity-90">+{fmt(clickValue(income.total, mults.clickSeconds))}</span>
-          </button>
+          <div className="relative">
+            <button onClick={onWork} className="btn-primary h-9 shrink-0 whitespace-nowrap px-3 text-sm sm:h-10 sm:px-4" title={t("header.workTitle")}>
+              {t("header.work")} <span className="num font-semibold opacity-90">+{fmt(clickValue(income.total, mults.clickSeconds))}</span>
+            </button>
+            {floats.map((f) => (
+              <span key={f.id} className="float-num text-sm" style={{ left: `${f.x}%`, top: "-4px" }}>{f.text}</span>
+            ))}
+          </div>
           <SaveMenu />
         </div>
       </div>

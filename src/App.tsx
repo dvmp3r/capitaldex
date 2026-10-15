@@ -6,6 +6,7 @@ import { Intro } from "./components/Intro";
 import { Market } from "./components/Market";
 import { NewsBanner } from "./components/NewsBanner";
 import { OfflineBanner } from "./components/OfflineBanner";
+import { Toasts } from "./components/Toasts";
 import { TICK_MS } from "./game/balance";
 import { t } from "./i18n";
 import { useGame } from "./store/gameStore";
@@ -40,6 +41,7 @@ export default function App() {
 
   return (
     <div className="min-h-full">
+      <div className="aurora" aria-hidden="true" />
       <Header />
       <div className="px-4">
         <OfflineBanner />
@@ -60,6 +62,7 @@ export default function App() {
         <p className="max-w-[72ch]">{t("app.disclaimer")}</p>
       </footer>
       <NewsBanner />
+      <Toasts />
       <Intro />
     </div>
   );
