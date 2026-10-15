@@ -43,6 +43,7 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [x] Pasada de "juice": oro como color del dinero, capital suavizado, números flotantes al operar, avisos de hitos, confeti en legendarias, halo en cartas nuevas, fondo con luz (15-oct-2026)
 - [x] Carta del color de su rareza (el gráfico ya no usa el color del sector, que confundía con el tier); revelado con ceremonia creciente por rareza: halo, chispas, rayos giratorios y subida distinta para épicas y legendarias (15-oct-2026)
 - [x] Logros con progreso visible (anillo, barra, "siguiente objetivo") y Mercado en tarjetas con filtros por grupo; índices como filtro desplegable de la colección; "Solo mías" activo por defecto (15-oct-2026)
+- [x] Física de las bolas reescrita: dinámica por posiciones con paso fijo, cuatro pasadas, fricción y sueño (sin vibración ni solapes); manivela con dos golpes del plato agitador; bolas mates; pie pequeño con patas y bandeja aparte; decoración (cartel en la vitrina, flechas del mando, placa de precio, banda) (15-oct-2026)
 - [x] Operar con órdenes limitadas (10, una cada 10 s, 3 s de ingresos por orden): el juego manual ya no genera capital ilimitado (15-oct-2026)
 - [ ] Reequilibrar costes de titulares con datos de juego reales (ahora son fijos, pensados para la curva de las primeras 200 carteras)
 - [x] Tutorial de 3 tiradas gratis: pistas contextuales en las primeras carteras (15-oct-2026)

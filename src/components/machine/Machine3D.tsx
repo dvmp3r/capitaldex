@@ -22,6 +22,22 @@ const RARITY_COLOR: Record<Rarity, THREE.Color> = {
 
 const MAX_PARTICLES = 40;
 
+/** Textura con un texto centrado sobre un fondo (para placas y rótulos). */
+function makeTextTexture(text: string, w: number, h: number, ink: string, bg: string, size: number): THREE.CanvasTexture {
+  const cv = document.createElement("canvas");
+  cv.width = w;
+  cv.height = h;
+  const g = cv.getContext("2d")!;
+  g.fillStyle = bg;
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = ink;
+  g.font = `800 ${size}px "Bricolage Grotesque", "Segoe UI", sans-serif`;
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText(text, w / 2, h / 2 + 2);
+  return new THREE.CanvasTexture(cv);
+}
+
 /**
  * Máquina gashapon en 3D estilizado (three.js plano, sin entorno ni refracción).
  * Caja roja con vitrina de cristal arriba, placa cromada delante con el mando grande y la boca de
@@ -96,11 +112,21 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     const D = 1.56; // fondo del cuerpo
     const FRONT = D / 2; // z de la cara delantera
 
-    // Pie con bandeja delante (la cápsula cae ahí)
-    add(new RoundedBoxGeometry(W + 0.16, 0.26, D + 0.9, 3, 0.06), dark, 0, 0.15, 0.45);
-    add(new RoundedBoxGeometry(W + 0.1, 0.05, D + 0.84, 2, 0.02), steel, 0, 0.295, 0.45);
+    // Pie: zócalo oscuro algo más estrecho que el cuerpo, sobre cuatro patas
+    add(new RoundedBoxGeometry(W - 0.1, 0.16, D - 0.1, 2, 0.04), dark, 0, 0.16, 0);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.CylinderGeometry(0.07, 0.08, 0.08, 16), dark, sx * (W / 2 - 0.2), 0.04, sz * (D / 2 - 0.2));
+    // Bandeja delantera donde cae la cápsula: cubeta poco profunda con borde cromado
+    const trayZ = 1.06;
+    add(new RoundedBoxGeometry(0.98, 0.06, 0.62, 2, 0.02), dark, 0, GEOM.trayY - 0.03, trayZ);
+    add(new RoundedBoxGeometry(1.0, 0.03, 0.04, 1, 0.01), chrome, 0, GEOM.trayY + 0.02, trayZ + 0.3);
+    add(new RoundedBoxGeometry(0.04, 0.03, 0.62, 1, 0.01), chrome, -0.49, GEOM.trayY + 0.02, trayZ);
+    add(new RoundedBoxGeometry(0.04, 0.03, 0.62, 1, 0.01), chrome, 0.49, GEOM.trayY + 0.02, trayZ);
+    add(new THREE.CylinderGeometry(0.05, 0.06, 0.2, 12), dark, -0.4, 0.1, trayZ + 0.2);
+    add(new THREE.CylinderGeometry(0.05, 0.06, 0.2, 12), dark, 0.4, 0.1, trayZ + 0.2);
     // Cuerpo rojo inferior
-    add(new RoundedBoxGeometry(W, 1.76, D, 4, 0.1), red, 0, 1.2, 0);
+    add(new RoundedBoxGeometry(W, 1.84, D, 4, 0.1), red, 0, 1.16, 0);
+    // Banda decorativa clara alrededor del cuerpo, a media altura
+    add(new RoundedBoxGeometry(W + 0.02, 0.07, D + 0.02, 1, 0.02), white, 0, 0.62, 0);
     // Marco entre cuerpo y vitrina
     add(new RoundedBoxGeometry(W + 0.06, 0.1, D + 0.06, 2, 0.03), redDark, 0, cm.y - 0.05, 0);
     // Vitrina de cristal
@@ -142,6 +168,47 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     // Placa cromada delantera con el mando y la boca
     const plateY = 1.22;
     add(new RoundedBoxGeometry(0.98, 1.4, 0.06, 2, 0.03), steel, 0, plateY, FRONT + 0.01);
+    // Placa de precio abajo a la derecha y pegatina de "1 cartera"
+    const tagTex = makeTextTexture("1 CARTERA", 320, 72, "#1c1c1f", "#f5f5f5", 34);
+    const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.1125), new THREE.MeshBasicMaterial({ map: tagTex }));
+    tag.position.set(0.68, 0.95, FRONT + 0.012);
+    machine.add(tag);
+    // Cartel dentro de la vitrina (al fondo): logo y los cinco colores
+    const posterTex = (() => {
+      const cv = document.createElement("canvas");
+      cv.width = 512;
+      cv.height = 512;
+      const g = cv.getContext("2d")!;
+      g.fillStyle = "#f6f6f4";
+      g.fillRect(0, 0, 512, 512);
+      g.fillStyle = "#d3362c";
+      g.fillRect(0, 0, 512, 92);
+      g.fillStyle = "#ffffff";
+      g.font = '800 54px "Bricolage Grotesque", "Segoe UI", sans-serif';
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText("CAPITALDEX", 256, 48);
+      g.fillStyle = "#1c1c1f";
+      g.font = '700 40px "Bricolage Grotesque", "Segoe UI", sans-serif';
+      g.fillText("EMPRESAS REALES", 256, 160);
+      g.font = '500 28px "Bricolage Grotesque", "Segoe UI", sans-serif';
+      g.fillStyle = "#555";
+      g.fillText("1 117 cotizadas · 5 rarezas", 256, 215);
+      const colors = [RARITY_HEX.comun, RARITY_HEX.poco_comun, RARITY_HEX.rara, RARITY_HEX.epica, RARITY_HEX.legendaria];
+      colors.forEach((c, i) => {
+        g.fillStyle = c;
+        g.beginPath();
+        g.arc(96 + i * 80, 320, 30, 0, Math.PI * 2);
+        g.fill();
+      });
+      g.fillStyle = "#1c1c1f";
+      g.font = '800 44px "Bricolage Grotesque", "Segoe UI", sans-serif';
+      g.fillText("¡GIRA Y COLECCIONA!", 256, 430);
+      return new THREE.CanvasTexture(cv);
+    })();
+    const poster = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.95), new THREE.MeshBasicMaterial({ map: posterTex }));
+    poster.position.set(0, chamberY + 0.1, cm.z - 0.08);
+    machine.add(poster);
     // Ranura de monedas y cerradura
     add(new RoundedBoxGeometry(0.34, 0.16, 0.04, 2, 0.02), white, -0.72, 1.78, FRONT + 0.015);
     add(new THREE.BoxGeometry(0.12, 0.03, 0.03), dark, -0.72, 1.78, FRONT + 0.04);
@@ -152,6 +219,35 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     // Mando: anillo, disco y asa; gira sobre z
     const knobY = 1.55;
     const knobZ = FRONT + 0.06;
+    const arrowsTex = (() => {
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = 256;
+      const g = cv.getContext("2d")!;
+      g.fillStyle = "#2a63d4";
+      g.beginPath();
+      g.arc(128, 128, 124, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = "#ffffff";
+      g.lineWidth = 7;
+      g.lineCap = "round";
+      for (let k = 0; k < 3; k++) {
+        const a0 = (k / 3) * Math.PI * 2 + 0.25;
+        g.beginPath();
+        g.arc(128, 128, 104, a0, a0 + 1.45);
+        g.stroke();
+        const ax = 128 + Math.cos(a0 + 1.45) * 104;
+        const ay = 128 + Math.sin(a0 + 1.45) * 104;
+        g.beginPath();
+        g.moveTo(ax + Math.cos(a0 + 1.45 + 2.6) * 16, ay + Math.sin(a0 + 1.45 + 2.6) * 16);
+        g.lineTo(ax, ay);
+        g.lineTo(ax + Math.cos(a0 + 1.45 - 2.6 + Math.PI) * 16, ay + Math.sin(a0 + 1.45 - 2.6 + Math.PI) * 16);
+        g.stroke();
+      }
+      return new THREE.CanvasTexture(cv);
+    })();
+    const arrows = new THREE.Mesh(new THREE.CircleGeometry(0.5, 40), new THREE.MeshBasicMaterial({ map: arrowsTex, transparent: true }));
+    arrows.position.set(0, knobY, FRONT + 0.045);
+    machine.add(arrows);
     add(new THREE.TorusGeometry(0.4, 0.045, 10, 48), chrome, 0, knobY, knobZ);
     const knob = new THREE.Group();
     knob.position.set(0, knobY, knobZ);
@@ -187,14 +283,14 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       g.fillRect(0, 0, 128, 128);
       return new THREE.CanvasTexture(cv);
     })();
-    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 3.6), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 3.2), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
     shadow.rotation.x = -Math.PI / 2;
-    shadow.position.set(0, 0.002, 0.4);
+    shadow.position.set(0, 0.002, 0.3);
     scene.add(shadow);
 
     // Cápsulas de la vitrina: una malla instanciada, un color por cápsula
     const r = GEOM.capR;
-    const capMat = new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0xcccccc, shininess: 80 });
+    const capMat = new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x3a3a3a, shininess: 22 });
     const caps = new THREE.InstancedMesh(new THREE.SphereGeometry(r, 18, 12), capMat, sim.caps.length);
     caps.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     sim.caps.forEach((cp, i) => caps.setColorAt(i, RARITY_COLOR[cp.rarity]));
@@ -385,6 +481,9 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       canvas.removeEventListener("pointercancel", onUp);
       canvas.removeEventListener("click", onClick);
       labelTex.dispose();
+      tagTex.dispose();
+      posterTex.dispose();
+      arrowsTex.dispose();
       scene.traverse((o) => {
         const m = o as THREE.Mesh;
         if (m.geometry) m.geometry.dispose();

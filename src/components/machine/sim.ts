@@ -5,6 +5,10 @@ import type { Rarity } from "../../game/types";
  * Simulación de la máquina de cápsulas, sin dependencias de three.js.
  * Unidades: 1 = ~10 cm. El origen está en el suelo, bajo el centro de la máquina.
  * La escena 3D lee este estado en cada fotograma; las fases (turn/drop/open) devuelven promesas.
+ *
+ * Las cápsulas de la vitrina usan dinámica basada en posiciones (PBD) con paso fijo: se predice la
+ * posición, se proyectan las restricciones (no solaparse, no salir de la caja) varias veces y la
+ * velocidad se deduce del desplazamiento. Así la pila se asienta sin vibrar y nada se atraviesa.
  */
 export interface Vec3 {
   x: number;
@@ -17,6 +21,8 @@ export interface Capsule {
   v: Vec3;
   rot: Vec3; // ángulos de Euler acumulados por el rodar
   rarity: Rarity;
+  /** Dormida: en reposo sobre algo, no se integra hasta que la toquen. */
+  asleep: boolean;
 }
 
 export interface DropState {
@@ -48,17 +54,22 @@ export const GEOM = {
   },
   capR: 0.15,
   dropR: 0.19,
-  /** La cápsula aparece dentro de la boca de salida, rueda hacia delante y cae a la bandeja del pie. */
+  /** La cápsula aparece dentro de la boca de salida, rueda hacia delante y cae a la bandeja. */
   spawn: { x: 0, y: 0.95, z: 0.55 },
   dropVel: { x: 0, y: -0.2, z: 1.7 },
   dropZMax: 1.08,
-  trayY: 0.28,
+  trayY: 0.22,
   crankDuration: 0.75,
   stirDuration: 0.85,
 };
 
 const GRAVITY = 9;
 const CAP_COUNT = 64;
+/** Paso fijo de la física de la vitrina y pasadas de proyección por paso. */
+const H = 1 / 120;
+const ITERATIONS = 4;
+const MAX_SPEED = 7;
+const SLEEP_SPEED = 0.04;
 /** Mezcla decorativa de la vitrina (más colorida que las probabilidades reales, que se muestran aparte). */
 const DOME_MIX: Rarity[] = [
   "legendaria", "epica", "rara", "rara", "poco_comun", "poco_comun", "comun", "comun", "comun",
@@ -71,52 +82,84 @@ const ease = (t: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4);
 export class GachaSim {
   caps: Capsule[] = [];
   crank = { angle: 0, from: 0, to: 0, t: 1 };
+  /** Segundos que quedan de agitación (la manivela da dos sacudidas) */
   stir = 0;
   capsule: DropState = { active: false, rarity: "comun", p: v3(), v: v3(), scale: v3(1, 1, 1), bounces: 0, settled: false, lid: 0, glow: 0 };
   particles: Particle[] = [];
   time = 0;
+  /** Alguna cápsula de la vitrina se está moviendo */
+  moving = false;
   private rng = mulberry32(7);
   private timers: { at: number; resolve: () => void }[] = [];
-  /** Hasta cuándo se considera agitada la vitrina (para seguir dibujando tras una sacudida). */
-  private shakeUntil = 0;
+  private acc = 0;
+  private kicks: number[] = [];
+  private prev: Vec3[] = [];
   private glowPhase: { start: number; dur: number } | null = null;
   private lidPhase: { start: number; dur: number } | null = null;
 
   constructor() {
     this.seedCapsules();
     // Dejar que las cápsulas se asienten antes de que se vea la máquina.
-    for (let i = 0; i < 90; i++) this.step(1 / 60);
+    for (let i = 0; i < 150; i++) this.step(1 / 60);
   }
 
   private seedCapsules() {
     const { min, max } = GEOM.chamber;
     const r = GEOM.capR;
     this.caps = [];
+    // Rejilla con algo de azar: sin solapes de partida, la pila cae ordenada.
+    const cols = Math.floor((max.x - min.x) / (2 * r + 0.01));
+    const rows = Math.floor((max.z - min.z) / (2 * r + 0.01));
     for (let i = 0; i < CAP_COUNT; i++) {
+      const layer = Math.floor(i / (cols * rows));
+      const idx = i % (cols * rows);
+      const cx = idx % cols;
+      const cz = Math.floor(idx / cols);
       this.caps.push({
-        p: v3(min.x + r + this.rng() * (max.x - min.x - 2 * r), min.y + r + this.rng() * (max.y - min.y - 2 * r), min.z + r + this.rng() * (max.z - min.z - 2 * r)),
+        p: v3(
+          min.x + r + 0.005 + cx * (2 * r + 0.01) + (this.rng() - 0.5) * 0.006,
+          min.y + r + 0.2 + layer * (2 * r + 0.02) + this.rng() * 0.1,
+          min.z + r + 0.005 + cz * (2 * r + 0.01) + (this.rng() - 0.5) * 0.006,
+        ),
         v: v3(),
         rot: v3(this.rng() * 6, this.rng() * 6, this.rng() * 6),
         rarity: DOME_MIX[i % DOME_MIX.length],
+        asleep: false,
       });
     }
+    this.prev = this.caps.map((c) => ({ ...c.p }));
   }
 
-  /** ¿Hay algo moviéndose o alguna fase pendiente? (la escena baja los fps cuando no) */
+  /** ¿Hay algo moviéndose o alguna fase pendiente? (la escena no dibuja cuando no) */
   busy(): boolean {
-    return this.time < this.shakeUntil || this.stir > 0 || this.crank.t < 1 || (this.capsule.active && !this.capsule.settled) || this.particles.length > 0 || this.capsule.glow > 0.01 || this.timers.length > 0;
+    return this.moving || this.stir > 0 || this.crank.t < 1 || (this.capsule.active && !this.capsule.settled) || this.particles.length > 0 || this.capsule.glow > 0.01 || this.timers.length > 0;
   }
 
-  /** Sacudida visual: empuja todas las cápsulas (con algo de azar) y mantiene la escena viva unos segundos. */
+  /** Sacudida visual: empuja todas las cápsulas (con algo de azar). */
   nudge(ax: number, ay: number, az: number) {
     for (const b of this.caps) {
+      b.asleep = false;
       b.v.x += ax * (0.6 + this.rng() * 0.8);
       b.v.y += ay * (0.6 + this.rng() * 0.8);
       b.v.z += az * (0.6 + this.rng() * 0.8);
-      const sp = Math.hypot(b.v.x, b.v.y, b.v.z);
-      if (sp > 7) { b.v.x *= 7 / sp; b.v.y *= 7 / sp; b.v.z *= 7 / sp; }
+      clampSpeed(b.v);
     }
-    this.shakeUntil = this.time + 3;
+    this.moving = true;
+  }
+
+  /** Golpe seco desde abajo (el plato agitador de la máquina): las de abajo saltan más. */
+  private kick(strength: number) {
+    const { min, max } = GEOM.chamber;
+    for (const b of this.caps) {
+      const h = (b.p.y - min.y) / (max.y - min.y); // 0 abajo → 1 arriba
+      const up = strength * (1.2 - h) * (0.7 + this.rng() * 0.6);
+      b.asleep = false;
+      b.v.y += up;
+      b.v.x += (this.rng() - 0.5) * strength * 0.5;
+      b.v.z += (this.rng() - 0.5) * strength * 0.5;
+      clampSpeed(b.v);
+    }
+    this.moving = true;
   }
 
   /** Promesa que se resuelve cuando el reloj de la simulación llegue a `seconds` desde ahora. */
@@ -127,6 +170,7 @@ export class GachaSim {
   turn(): Promise<void> {
     this.crank = { angle: this.crank.angle, from: this.crank.angle, to: this.crank.angle + Math.PI * 2, t: 0 };
     this.stir = GEOM.stirDuration;
+    this.kicks = [this.time + 0.05, this.time + 0.4];
     return this.after(GEOM.crankDuration + 0.1);
   }
 
@@ -171,6 +215,7 @@ export class GachaSim {
     this.glowPhase = null;
     this.lidPhase = null;
     this.stir = 0;
+    this.kicks = [];
     this.crank = { angle: this.crank.to, from: this.crank.to, to: this.crank.to, t: 1 };
     this.capsule = {
       active: true,
@@ -188,7 +233,7 @@ export class GachaSim {
 
   /** Avanza la simulación `dt` segundos. */
   step(dt: number) {
-    dt = Math.min(dt, 1 / 30);
+    dt = Math.min(dt, 0.1);
     this.time += dt;
 
     // Manivela
@@ -198,11 +243,18 @@ export class GachaSim {
       const overshoot = Math.sin(this.crank.t * Math.PI) * 0.18; // pequeño rebote
       this.crank.angle = this.crank.from + (this.crank.to - this.crank.from) * k + overshoot;
     }
-
-    // Cápsulas de la cúpula (dos subpasos para que las colisiones no exploten)
-    const sub = 2;
-    for (let s = 0; s < sub; s++) this.stepCapsules(dt / sub);
     if (this.stir > 0) this.stir -= dt;
+    while (this.kicks.length && this.kicks[0] <= this.time) {
+      this.kicks.shift();
+      this.kick(2.7);
+    }
+
+    // Cápsulas de la vitrina: paso fijo (varios subpasos por fotograma, con tope)
+    this.acc = Math.min(this.acc + dt, H * 12);
+    while (this.acc >= H) {
+      this.stepCapsules(H);
+      this.acc -= H;
+    }
 
     // Cápsula que cae
     if (this.capsule.active && !this.capsule.settled) this.stepDrop(dt);
@@ -245,89 +297,98 @@ export class GachaSim {
     due.forEach((t) => t.resolve());
   }
 
-  private stepCapsules(dt: number) {
-    const { min } = GEOM.chamber;
-    const c = GEOM.dome.c;
-    const r = GEOM.capR;
-    const stirring = this.stir > 0;
-    for (const b of this.caps) {
-      b.v.y -= GRAVITY * dt;
-      if (stirring) {
-        // remolino alrededor del eje vertical + sacudida hacia arriba
-        const dx = b.p.x - c.x;
-        const dz = b.p.z - c.z;
-        const len = Math.hypot(dx, dz) || 1;
-        const k = this.stir / GEOM.stirDuration;
-        b.v.x += (-dz / len) * 9 * k * dt + (this.rng() - 0.5) * 3 * dt;
-        b.v.z += (dx / len) * 9 * k * dt + (this.rng() - 0.5) * 3 * dt;
-        b.v.y += (5 + this.rng() * 6) * k * dt;
-      }
-      b.p.x += b.v.x * dt;
-      b.p.y += b.v.y * dt;
-      b.p.z += b.v.z * dt;
-      // Paredes de la vitrina
-      this.constrainToChamber(b, true);
-      // rodar: giro proporcional a la velocidad
-      b.rot.x += (b.v.z / r) * dt;
-      b.rot.z -= (b.v.x / r) * dt;
-      // reposo (sobre el suelo o sobre otra cápsula quieta)
-      if (!stirring && Math.hypot(b.v.x, b.v.y, b.v.z) < 0.05 && b.p.y < min.y + r + 0.01) {
-        b.v.x = b.v.y = b.v.z = 0;
-      }
-    }
-    // Colisiones entre cápsulas (masas iguales)
-    for (let i = 0; i < this.caps.length; i++) {
-      for (let j = i + 1; j < this.caps.length; j++) {
-        const a = this.caps[i];
-        const b = this.caps[j];
-        const dx = b.p.x - a.p.x;
-        const dy = b.p.y - a.p.y;
-        const dz = b.p.z - a.p.z;
-        const dist = Math.hypot(dx, dy, dz) || 1e-6;
-        const min = r * 2;
-        if (dist < min) {
-          const ux = dx / dist;
-          const uy = dy / dist;
-          const uz = dz / dist;
-          const push = (min - dist) / 2;
-          a.p.x -= ux * push;
-          a.p.y -= uy * push;
-          a.p.z -= uz * push;
-          b.p.x += ux * push;
-          b.p.y += uy * push;
-          b.p.z += uz * push;
-          const rel = (b.v.x - a.v.x) * ux + (b.v.y - a.v.y) * uy + (b.v.z - a.v.z) * uz;
-          if (rel < 0) {
-            const jimp = (-(1 + 0.2) * rel) / 2;
-            a.v.x -= ux * jimp;
-            a.v.y -= uy * jimp;
-            a.v.z -= uz * jimp;
-            b.v.x += ux * jimp;
-            b.v.y += uy * jimp;
-            b.v.z += uz * jimp;
-          }
-        }
-      }
-    }
-    for (const b of this.caps) this.constrainToChamber(b, false);
-  }
-
-  /** Mantiene la cápsula dentro de la vitrina; con `bounce` refleja la velocidad al chocar con una pared. */
-  private constrainToChamber(b: Capsule, bounce: boolean) {
+  /** Un paso fijo de la física de la vitrina (PBD). */
+  private stepCapsules(h: number) {
+    const caps = this.caps;
+    const n = caps.length;
     const { min, max } = GEOM.chamber;
     const r = GEOM.capR;
-    const e = 0.25;
-    const axes = ["x", "y", "z"] as const;
-    for (const k of axes) {
-      if (b.p[k] < min[k] + r) {
-        b.p[k] = min[k] + r;
-        if (bounce && b.v[k] < 0) b.v[k] = -b.v[k] * e;
-        if (bounce && k === "y") { b.v.x *= 0.94; b.v.z *= 0.94; }
-      } else if (b.p[k] > max[k] - r) {
-        b.p[k] = max[k] - r;
-        if (bounce && b.v[k] > 0) b.v[k] = -b.v[k] * e;
+    const minD = 2 * r;
+    const prev = this.prev;
+    const contact = new Uint8Array(n);
+
+    // 1) Predicción: gravedad e integración (las dormidas no se mueven)
+    for (let i = 0; i < n; i++) {
+      const b = caps[i];
+      prev[i].x = b.p.x;
+      prev[i].y = b.p.y;
+      prev[i].z = b.p.z;
+      if (b.asleep) continue;
+      b.v.y -= GRAVITY * h;
+      b.p.x += b.v.x * h;
+      b.p.y += b.v.y * h;
+      b.p.z += b.v.z * h;
+    }
+
+    // 2) Proyección de restricciones, varias pasadas
+    for (let it = 0; it < ITERATIONS; it++) {
+      for (let i = 0; i < n; i++) {
+        const a = caps[i];
+        for (let j = i + 1; j < n; j++) {
+          const b = caps[j];
+          if (a.asleep && b.asleep) continue;
+          const dx = b.p.x - a.p.x;
+          const dy = b.p.y - a.p.y;
+          const dz = b.p.z - a.p.z;
+          const d2 = dx * dx + dy * dy + dz * dz;
+          if (d2 >= minD * minD || d2 === 0) continue;
+          const d = Math.sqrt(d2);
+          const push = (minD - d) / 2;
+          const ux = dx / d;
+          const uy = dy / d;
+          const uz = dz / d;
+          // Si una está dormida, la otra se lleva toda la corrección (y despierta a la dormida si empuja fuerte)
+          let wa = 0.5;
+          let wb = 0.5;
+          if (a.asleep) { wa = 0; wb = 1; if (push > 0.004) a.asleep = false; }
+          if (b.asleep) { wb = 0; wa = 1; if (push > 0.004) b.asleep = false; }
+          a.p.x -= ux * push * 2 * wa;
+          a.p.y -= uy * push * 2 * wa;
+          a.p.z -= uz * push * 2 * wa;
+          b.p.x += ux * push * 2 * wb;
+          b.p.y += uy * push * 2 * wb;
+          b.p.z += uz * push * 2 * wb;
+          contact[i] = 1;
+          contact[j] = 1;
+        }
+      }
+      for (let i = 0; i < n; i++) {
+        const b = caps[i];
+        if (b.p.x < min.x + r) { b.p.x = min.x + r; contact[i] = 1; }
+        else if (b.p.x > max.x - r) { b.p.x = max.x - r; contact[i] = 1; }
+        if (b.p.y < min.y + r) { b.p.y = min.y + r; contact[i] = 1; }
+        else if (b.p.y > max.y - r) { b.p.y = max.y - r; contact[i] = 1; }
+        if (b.p.z < min.z + r) { b.p.z = min.z + r; contact[i] = 1; }
+        else if (b.p.z > max.z - r) { b.p.z = max.z - r; contact[i] = 1; }
       }
     }
+
+    // 3) Velocidad a partir del desplazamiento; fricción en contacto; sueño
+    let moving = false;
+    for (let i = 0; i < n; i++) {
+      const b = caps[i];
+      if (b.asleep) continue;
+      b.v.x = (b.p.x - prev[i].x) / h;
+      b.v.y = (b.p.y - prev[i].y) / h;
+      b.v.z = (b.p.z - prev[i].z) / h;
+      if (contact[i]) {
+        b.v.x *= 0.9;
+        b.v.z *= 0.9;
+        b.v.y *= 0.96;
+      }
+      clampSpeed(b.v);
+      const sp = Math.hypot(b.v.x, b.v.y, b.v.z);
+      if (contact[i] && sp < SLEEP_SPEED) {
+        b.v.x = b.v.y = b.v.z = 0;
+        b.asleep = true;
+      } else {
+        moving = true;
+        // rodar: giro proporcional a la velocidad
+        b.rot.x += (b.v.z / r) * h;
+        b.rot.z -= (b.v.x / r) * h;
+      }
+    }
+    this.moving = moving;
   }
 
   private stepDrop(dt: number) {
@@ -359,7 +420,7 @@ export class GachaSim {
         d.settled = true;
       }
     }
-    // paredes laterales de la ventana
+    // paredes laterales de la boca
     const half = 0.26 - GEOM.dropR;
     if (d.p.x > GEOM.spawn.x + half) { d.p.x = GEOM.spawn.x + half; d.v.x = -Math.abs(d.v.x) * 0.5; }
     if (d.p.x < GEOM.spawn.x - half) { d.p.x = GEOM.spawn.x - half; d.v.x = Math.abs(d.v.x) * 0.5; }
@@ -380,5 +441,14 @@ export class GachaSim {
         size: 0.02 + this.rng() * 0.035,
       });
     }
+  }
+}
+
+function clampSpeed(v: Vec3) {
+  const sp = Math.hypot(v.x, v.y, v.z);
+  if (sp > MAX_SPEED) {
+    v.x *= MAX_SPEED / sp;
+    v.y *= MAX_SPEED / sp;
+    v.z *= MAX_SPEED / sp;
   }
 }
