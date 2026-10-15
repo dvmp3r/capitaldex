@@ -5,7 +5,7 @@
  */
 import type { Rarity } from "./types";
 
-export const SAVE_VERSION = 2; // 2: mejoras (titulares), impulsos de noticias y carteras gratis
+export const SAVE_VERSION = 3; // 3: titulares por niveles (upgradeLevels) y sin piedad
 export const TICK_MS = 250;
 
 /** Capitalización mínima en USD para cada rareza (común = resto). */
@@ -25,9 +25,6 @@ export const GACHA_ODDS: Record<Rarity, number> = {
   legendaria: 0.01,
 };
 
-/** Piedad: tras N-1 tiradas sin épica (o legendaria), la N garantiza esa rareza o superior. */
-export const PITY_EPIC = 20;
-export const PITY_LEGENDARY = 90;
 
 export const FREE_PULLS = 3;
 export const PULL_BASE_COST = 100;

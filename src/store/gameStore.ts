@@ -10,7 +10,7 @@ import { RARITY_RANK, rarityOf } from "../game/rarity";
 import { regionOf } from "../game/regions";
 import { parseSave, serializeSave, type ParseResult } from "../game/save";
 import type { ActiveBoost, GachaState, Holdings, PullResult, Rarity, SaveData, Stats } from "../game/types";
-import { computeMultipliers, requirementMet, UPGRADE_BY_ID, type Multipliers, type PlayerContext } from "../game/upgrades";
+import { computeMultipliers, migrateLegacyUpgrades, requirementMet, seriesCost, seriesHeadline, SERIES_BY_ID, type Multipliers, type PlayerContext, type UpgradeLevels } from "../game/upgrades";
 
 export type { Stats } from "../game/types";
 
@@ -45,8 +45,8 @@ export interface GameState {
   lastTick: number;
   stats: Stats;
   settings: Settings;
-  /** Titulares comprados (ids de mejoras) */
-  upgrades: string[];
+  /** Nivel comprado de cada serie de titulares */
+  upgrades: UpgradeLevels;
   /** Impulsos temporales activos */
   boosts: ActiveBoost[];
   /** Carteras gratis pendientes (regalos de noticias) */
@@ -84,7 +84,7 @@ function initialState(now = Date.now()) {
     gacha: INITIAL_GACHA,
     lastTick: now,
     stats: { clicks: 0, bestRarityRank: -1, playSeconds: 0, startedAt: now },
-    upgrades: [] as string[],
+    upgrades: {} as UpgradeLevels,
     boosts: [] as ActiveBoost[],
     freePulls: 0,
     news: { offer: null as NewsOffer | null, nextAt: 0 },
@@ -96,8 +96,21 @@ function initialState(now = Date.now()) {
 
 let toastSeq = 0;
 
+/** Acepta el formato antiguo (lista de ids) o el nuevo (niveles por serie) y devuelve niveles válidos. */
+export function normalizeLevels(raw: unknown): UpgradeLevels {
+  if (Array.isArray(raw)) return migrateLegacyUpgrades(raw.filter((x) => typeof x === "string"));
+  const out: UpgradeLevels = {};
+  if (raw && typeof raw === "object") {
+    for (const [id, lvl] of Object.entries(raw as Record<string, unknown>)) {
+      const s = SERIES_BY_ID.get(id);
+      if (s && typeof lvl === "number" && lvl > 0) out[id] = Math.min(s.maxLevel, Math.floor(lvl));
+    }
+  }
+  return out;
+}
+
 /** Multiplicadores vigentes de una partida. */
-export function multsOf(upgrades: string[], boosts: ActiveBoost[], now = Date.now()): Multipliers {
+export function multsOf(upgrades: UpgradeLevels, boosts: ActiveBoost[], now = Date.now()): Multipliers {
   return computeMultipliers(upgrades, boosts, now);
 }
 
@@ -106,7 +119,7 @@ export function incomeOf(holdings: Holdings, mults: Multipliers): IncomeBreakdow
 }
 
 /** Contexto para los requisitos de las mejoras. */
-export function contextOf(holdings: Holdings, pulls: number, upgrades: string[]): PlayerContext {
+export function contextOf(holdings: Holdings, pulls: number): PlayerContext {
   const bySector: Record<string, number> = {};
   const byRegion = { US: 0, EU: 0, ASIA: 0, LATAM: 0, OTHER: 0 };
   const byRarity: Record<Rarity, number> = { comun: 0, poco_comun: 0, rara: 0, epica: 0, legendaria: 0 };
@@ -119,7 +132,7 @@ export function contextOf(holdings: Holdings, pulls: number, upgrades: string[])
     byRegion[regionOf(c.countryCode)]++;
     byRarity[rarityOf(c)]++;
   }
-  return { companies, pulls, bySector, byRegion, byRarity, owned: new Set(upgrades) };
+  return { companies, pulls, bySector, byRegion, byRarity };
 }
 
 export const useGame = create<GameState>()(
@@ -208,10 +221,19 @@ export const useGame = create<GameState>()(
 
       buyUpgrade: (id) => {
         const s = get();
-        const u = UPGRADE_BY_ID.get(id);
-        if (!u || s.upgrades.includes(id) || s.capital < u.cost) return false;
-        if (!requirementMet(u.requires, contextOf(s.holdings, s.gacha.pulls, s.upgrades))) return false;
-        set({ capital: s.capital - u.cost, upgrades: [...s.upgrades, id], toasts: [...s.toasts.slice(-3), { id: ++toastSeq, text: u.headline, kind: "gold" }] });
+        const series = SERIES_BY_ID.get(id);
+        if (!series) return false;
+        const level = (s.upgrades[id] ?? 0) + 1;
+        if (level > series.maxLevel) return false;
+        const cost = seriesCost(series, level);
+        if (s.capital < cost) return false;
+        if (!requirementMet(series.requirement(level), contextOf(s.holdings, s.gacha.pulls))) return false;
+        const [headline] = seriesHeadline(series, level);
+        set({
+          capital: s.capital - cost,
+          upgrades: { ...s.upgrades, [id]: level },
+          toasts: [...s.toasts.slice(-3), { id: ++toastSeq, text: `${headline} · nivel ${level}`, kind: "gold" }],
+        });
         return true;
       },
 
@@ -278,7 +300,7 @@ export const useGame = create<GameState>()(
           gacha: r.data.gacha,
           lastTick: r.data.lastTick,
           stats: r.data.stats,
-          upgrades: (r.data.upgrades ?? []).filter((id) => UPGRADE_BY_ID.has(id)),
+          upgrades: normalizeLevels(r.data.upgrades),
           boosts: r.data.boosts ?? [],
           freePulls: r.data.freePulls ?? 0,
           news: { offer: null, nextAt: 0 },
@@ -312,7 +334,7 @@ export const useGame = create<GameState>()(
           ...current,
           ...p,
           settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) },
-          upgrades: p.upgrades ?? [],
+          upgrades: normalizeLevels(p.upgrades as unknown),
           boosts: p.boosts ?? [],
           freePulls: p.freePulls ?? 0,
           news: p.news ?? { offer: null, nextAt: 0 },
@@ -321,7 +343,8 @@ export const useGame = create<GameState>()(
       migrate: (persisted, version) => {
         // Punto único para migrar guardados antiguos cuando cambie SAVE_VERSION.
         const p = (persisted ?? {}) as Partial<GameState>;
-        if (version < 2) return { ...p, upgrades: [], boosts: [], freePulls: 0, news: { offer: null, nextAt: 0 } } as GameState;
+        if (version < 2) return { ...p, upgrades: {}, boosts: [], freePulls: 0, news: { offer: null, nextAt: 0 } } as GameState;
+        if (version < 3) return { ...p, upgrades: normalizeLevels(p.upgrades as unknown) } as GameState;
         return p as GameState;
       },
       onRehydrateStorage: () => (state) => {

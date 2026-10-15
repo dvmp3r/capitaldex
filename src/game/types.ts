@@ -67,8 +67,8 @@ export interface SaveData {
   gacha: GachaState;
   lastTick: number;
   stats: Stats;
-  /** Desde la versión 2 */
-  upgrades?: string[];
+  /** Desde la versión 2 (lista de ids) y 3 (niveles por serie) */
+  upgrades?: string[] | Record<string, number>;
   boosts?: ActiveBoost[];
   freePulls?: number;
 }

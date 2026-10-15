@@ -1,4 +1,4 @@
-import { FREE_PULLS, GACHA_ODDS, PITY_EPIC, PITY_LEGENDARY, PULL_BASE_COST, PULL_COST_GROWTH } from "./balance";
+import { FREE_PULLS, GACHA_ODDS, PULL_BASE_COST, PULL_COST_GROWTH } from "./balance";
 import { RARITY_RANK } from "./rarity";
 import { RARITIES, type Company, type GachaState, type Rarity } from "./types";
 
@@ -18,17 +18,6 @@ export function weightedRarity(rng: () => number): Rarity {
     if (r < 0) return rarity;
   }
   return "comun";
-}
-
-/** Aplica la piedad sobre una rareza sorteada. Devuelve la rareza final y si la piedad intervino. */
-export function applyPity(rolled: Rarity, state: GachaState): { rarity: Rarity; pity: boolean } {
-  if (state.sinceLegendary >= PITY_LEGENDARY - 1) {
-    return { rarity: "legendaria", pity: rolled !== "legendaria" };
-  }
-  if (state.sinceEpic >= PITY_EPIC - 1 && RARITY_RANK[rolled] < RARITY_RANK.epica) {
-    return { rarity: "epica", pity: true };
-  }
-  return { rarity: rolled, pity: false };
 }
 
 /** Elige una empresa de la rareza indicada; si el grupo está vacío baja a la siguiente rareza con empresas. */
@@ -54,10 +43,9 @@ export function nextGachaState(state: GachaState, rarity: Rarity): GachaState {
   };
 }
 
-/** Tirada completa: sorteo, piedad y elección de empresa. No muta nada. */
+/** Tirada completa: sorteo y elección de empresa. Sin piedad: probabilidad pura. No muta nada. */
 export function rollPull(pool: Record<Rarity, Company[]>, state: GachaState, rng: () => number = Math.random) {
   const rolled = weightedRarity(rng);
-  const { rarity, pity } = applyPity(rolled, state);
-  const picked = pickCompany(pool, rarity, rng);
-  return { ...picked, pity, next: nextGachaState(state, picked.rarity) };
+  const picked = pickCompany(pool, rolled, rng);
+  return { ...picked, pity: false, next: nextGachaState(state, picked.rarity) };
 }

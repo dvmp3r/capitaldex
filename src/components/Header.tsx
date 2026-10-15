@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useTween } from "../hooks/useTween";
+import { useLiveValue } from "../hooks/useTween";
 import { clickValue } from "../game/economy";
 import { fmt, fmtCapital, fmtMult } from "../game/format";
 import { rarityLabel } from "../game/rarity";
@@ -13,9 +13,10 @@ export function Header() {
   const work = useGame((s) => s.work);
   const boosts = useGame((s) => s.boosts);
   const freePulls = useGame((s) => s.freePulls);
+  const lastTick = useGame((s) => s.lastTick);
   const income = useIncome();
   const mults = useMults();
-  const shown = useTween(capital, 12);
+  const shown = useLiveValue(capital, income.total, lastTick);
   const [floats, setFloats] = useState<{ id: number; text: string; x: number }[]>([]);
   const seq = useRef(0);
   const [pop, setPop] = useState(0);

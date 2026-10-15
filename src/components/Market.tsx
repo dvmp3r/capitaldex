@@ -3,54 +3,58 @@ import { fmtCapital } from "../game/format";
 import { rarityLabel } from "../game/rarity";
 import { REGION_NAME, REGIONS } from "../game/regions";
 import { RARITIES } from "../game/types";
-import { effectLabel, requirementMet, requirementText, UPGRADES, type Upgrade } from "../game/upgrades";
+import { requirementText, SERIES, seriesCost, seriesHeadline, seriesTargetLabel, seriesValueLabel, type Series } from "../game/upgrades";
 import { t } from "../i18n";
 import { contextOf, useGame, useMults } from "../store/gameStore";
 
-/** Pestaña Mercado: los titulares (mejoras permanentes) y el resumen de multiplicadores. */
+/** Pestaña Mercado: las series de titulares por niveles y el resumen de multiplicadores. */
 export function Market() {
   const capital = useGame((s) => s.capital);
   const holdings = useGame((s) => s.holdings);
   const pulls = useGame((s) => s.gacha.pulls);
-  const upgrades = useGame((s) => s.upgrades);
+  const levels = useGame((s) => s.upgrades);
   const buyUpgrade = useGame((s) => s.buyUpgrade);
   const mults = useMults();
 
-  const ctx = useMemo(() => contextOf(holdings, pulls, upgrades), [holdings, pulls, upgrades]);
-  const owned = ctx.owned;
+  const ctx = useMemo(() => contextOf(holdings, pulls), [holdings, pulls]);
 
-  const { available, locked, bought } = useMemo(() => {
-    const byCost = (a: Upgrade, b: Upgrade) => a.cost - b.cost;
-    const available: Upgrade[] = [];
-    const locked: Upgrade[] = [];
-    const bought: Upgrade[] = [];
-    for (const u of UPGRADES) {
-      if (owned.has(u.id)) bought.push(u);
-      else if (requirementMet(u.requires, ctx)) available.push(u);
-      // Solo se enseñan los bloqueados cuyo titular previo ya está comprado: el siguiente escalón de cada serie.
-      else if (!u.requires?.upgrade || owned.has(u.requires.upgrade)) locked.push(u);
+  const rows = useMemo(() => {
+    const open: { s: Series; level: number; cost: number; locked: string | null }[] = [];
+    const maxed: { s: Series; level: number }[] = [];
+    for (const s of SERIES) {
+      const level = levels[s.id] ?? 0;
+      if (level >= s.maxLevel) {
+        maxed.push({ s, level });
+        continue;
+      }
+      const next = level + 1;
+      open.push({ s, level, cost: seriesCost(s, next), locked: requirementText(s.requirement(next), ctx, rarityLabel) });
     }
-    return { available: available.sort(byCost), locked: locked.sort(byCost), bought };
-  }, [ctx, owned]);
+    // Primero lo que se puede comprar ya, por coste; después lo bloqueado, por coste.
+    open.sort((a, b) => Number(!!a.locked) - Number(!!b.locked) || a.cost - b.cost);
+    return { open, maxed };
+  }, [levels, ctx]);
 
   const summary = useMemo(() => {
     const items: string[] = [];
-    if (mults.global > 1) items.push(`Todo ×${mults.global}`);
-    for (const [sector, m] of Object.entries(mults.sector)) if (m > 1) items.push(`${sector} ×${m}`);
-    for (const r of REGIONS) if (mults.region[r] > 1) items.push(`${REGION_NAME[r]} ×${mults.region[r]}`);
-    for (const r of RARITIES) if (mults.rarity[r] > 1) items.push(`${rarityLabel(r)}s ×${mults.rarity[r]}`);
+    if (mults.global > 1) items.push(`Todo ×${mults.global.toFixed(2)}`);
+    for (const [sector, m] of Object.entries(mults.sector)) if (m > 1) items.push(`${sector} ×${m.toFixed(2)}`);
+    for (const r of REGIONS) if (mults.region[r] > 1) items.push(`${REGION_NAME[r]} ×${mults.region[r].toFixed(2)}`);
+    for (const r of RARITIES) if (mults.rarity[r] > 1) items.push(`${rarityLabel(r)}s ×${mults.rarity[r].toFixed(2)}`);
     if (mults.gachaCost < 1) items.push(t("market.gacha", { pct: Math.round((1 - mults.gachaCost) * 100) }));
-    items.push(t("market.clickSeconds", { n: mults.clickSeconds }));
+    items.push(t("market.clickSeconds", { n: Math.round(mults.clickSeconds) }));
     items.push(t("market.offline", { rate: Math.round(mults.offlineRate * 100), hours: Math.round(mults.offlineCapSeconds / 3600) }));
-    if (mults.newsFrequency > 1) items.push(t("market.newsFreq", { n: mults.newsFrequency }));
+    if (mults.newsFrequency > 1) items.push(t("market.newsFreq", { n: mults.newsFrequency.toFixed(2) }));
     return items;
   }, [mults]);
+
+  const bought = Object.values(levels).reduce((n, l) => n + l, 0);
 
   return (
     <section aria-labelledby="mercado-h" className="min-w-0">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 id="mercado-h" className="text-lg font-bold">{t("market.title")}</h2>
-        <span className="num text-sm text-muted">{t("market.ownedCount", { n: bought.length })}</span>
+        <span className="num text-sm text-muted">{t("market.levelsBought", { n: bought })}</span>
       </div>
       <p className="mt-1 max-w-[60ch] text-sm text-muted [text-wrap:pretty]">{t("market.intro")}</p>
 
@@ -61,33 +65,17 @@ export function Market() {
         </div>
       </div>
 
-      <h3 className="mt-6 text-base font-bold">{t("market.available")}</h3>
-      {available.length === 0 ? (
-        <p className="mt-2 text-sm text-muted">{t("market.noneAvailable")}</p>
-      ) : (
-        <ul className="mt-2 divide-y divide-line">
-          {available.map((u) => (
-            <Headline key={u.id} u={u} canAfford={capital >= u.cost} onBuy={() => buyUpgrade(u.id)} />
-          ))}
-        </ul>
-      )}
+      <ul className="mt-5 divide-y divide-line">
+        {rows.open.map(({ s, level, cost, locked }) => (
+          <SeriesRow key={s.id} s={s} level={level} cost={cost} locked={locked} canAfford={capital >= cost} onBuy={() => buyUpgrade(s.id)} />
+        ))}
+      </ul>
 
-      {locked.length > 0 && (
-        <>
-          <h3 className="mt-8 text-base font-bold">{t("market.locked")}</h3>
-          <ul className="mt-2 divide-y divide-line">
-            {locked.slice(0, 12).map((u) => (
-              <Headline key={u.id} u={u} locked={requirementText(u.requires, ctx, rarityLabel) ?? undefined} />
-            ))}
-          </ul>
-        </>
-      )}
-
-      {bought.length > 0 && (
+      {rows.maxed.length > 0 && (
         <details className="mt-8">
-          <summary className="cursor-pointer select-none text-base font-bold">{t("market.owned")} <span className="num text-sm font-normal text-muted">({bought.length})</span></summary>
+          <summary className="cursor-pointer select-none text-base font-bold">{t("market.maxed")} <span className="num text-sm font-normal text-muted">({rows.maxed.length})</span></summary>
           <ul className="mt-2 divide-y divide-line opacity-80">
-            {bought.map((u) => <Headline key={u.id} u={u} done />)}
+            {rows.maxed.map(({ s, level }) => <SeriesRow key={s.id} s={s} level={level} cost={0} locked={null} done />)}
           </ul>
         </details>
       )}
@@ -95,26 +83,37 @@ export function Market() {
   );
 }
 
-function Headline({ u, canAfford, onBuy, locked, done }: { u: Upgrade; canAfford?: boolean; onBuy?: () => void; locked?: string; done?: boolean }) {
+function SeriesRow({ s, level, cost, locked, canAfford, onBuy, done }: { s: Series; level: number; cost: number; locked: string | null; canAfford?: boolean; onBuy?: () => void; done?: boolean }) {
+  const [headline, body] = seriesHeadline(s, level);
+  const nowLabel = seriesValueLabel(s, level);
+  const nextLabel = seriesValueLabel(s, Math.min(s.maxLevel, level + 1));
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
       <div className="min-w-0 flex-1 basis-60">
-        <div className="flex items-center gap-2 text-[11px] font-semibold text-muted">
-          <span>{u.category}</span>
-          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-ink">{effectLabel(u.effect, rarityLabel)}</span>
+        <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-muted">
+          <span>{s.category}</span>
+          <span className="num rounded-full bg-surface-2 px-2 py-0.5 text-ink">{t("market.level", { n: level, max: s.maxLevel })}</span>
+          <span className="num rounded-full bg-surface-2 px-2 py-0.5 text-ink">
+            {seriesTargetLabel(s, rarityLabel)} {nowLabel}{!done && <span className="text-up"> → {nextLabel}</span>}
+          </span>
         </div>
-        <div className={`mt-1 font-sans text-[17px] font-bold leading-tight ${done ? "" : locked ? "text-muted" : ""}`} style={{ fontVariationSettings: '"opsz" 32' }}>
-          {u.headline}
+        <div className={`mt-1 font-sans text-[17px] font-bold leading-tight ${locked ? "text-muted" : ""}`} style={{ fontVariationSettings: '"opsz" 32' }}>
+          {headline}
         </div>
-        <div className="mt-0.5 text-[13px] text-muted">{locked ?? u.body}</div>
+        <div className="mt-0.5 text-[13px] text-muted">{locked ?? body}</div>
+        {!done && (
+          <div className="meter mt-2 max-w-[220px]">
+            <i style={{ width: `${(level / s.maxLevel) * 100}%`, background: "var(--color-gold)" }} />
+          </div>
+        )}
       </div>
       {done ? (
-        <span className="num text-xs text-muted">✓</span>
+        <span className="num text-xs text-gold">{t("market.max")}</span>
       ) : locked ? (
-        <span className="num text-sm text-muted">{fmtCapital(u.cost)}</span>
+        <span className="num text-sm text-muted">{fmtCapital(cost)}</span>
       ) : (
         <button onClick={onBuy} disabled={!canAfford} className="btn-primary h-10 shrink-0 px-4 text-sm">
-          {t("market.buy")} <span className="num font-semibold opacity-90">{fmtCapital(u.cost)}</span>
+          {t("market.levelUp")} <span className="num font-semibold opacity-90">{fmtCapital(cost)}</span>
         </button>
       )}
     </li>

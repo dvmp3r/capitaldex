@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FREE_PULLS, GACHA_ODDS, PITY_EPIC, PITY_LEGENDARY } from "../game/balance";
+import { FREE_PULLS, GACHA_ODDS } from "../game/balance";
 import { fmtCapital, fmtDuration, fmtPct } from "../game/format";
 import { pullCost } from "../game/gacha";
 import { rarityLabel } from "../game/rarity";
@@ -51,7 +51,6 @@ export function GachaPanel() {
             </span>
           )}
           {legendary && lastPull.isNew && <span className="ml-2 text-muted">{t("gacha.newInCollection")}</span>}
-          {lastPull.pity && <span className="ml-2 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted">{t("gacha.guaranteed")}</span>}
         </p>
       )}
 
@@ -64,9 +63,9 @@ export function GachaPanel() {
 
       <Hint pulls={gacha.pulls} canAfford={canAfford} lastRarity={lastPull?.rarity} />
 
-      <div className="mt-4 space-y-2.5">
-        <Pity label={t("gacha.pityEpic")} left={PITY_EPIC - gacha.sinceEpic} total={PITY_EPIC} color="var(--color-epica)" />
-        <Pity label={t("gacha.pityLegendary")} left={PITY_LEGENDARY - gacha.sinceLegendary} total={PITY_LEGENDARY} color="var(--color-legendaria)" />
+      <div className="num mt-4 flex justify-between text-xs text-muted">
+        <span>{t("gacha.streakEpic", { n: gacha.sinceEpic })}</span>
+        <span>{t("gacha.streakLegendary", { n: gacha.sinceLegendary })}</span>
       </div>
 
       <details className="mt-4 text-xs text-muted">
@@ -136,16 +135,3 @@ function StatsPanel() {
   );
 }
 
-function Pity({ label, left, total, color }: { label: string; left: number; total: number; color: string }) {
-  return (
-    <div>
-      <div className="flex justify-between text-xs">
-        <span className="text-muted">{label}</span>
-        <span className="num font-medium">{t("gacha.pityIn", { n: left })}</span>
-      </div>
-      <div className="meter mt-1">
-        <i style={{ width: `${((total - left) / total) * 100}%`, background: color }} />
-      </div>
-    </div>
-  );
-}

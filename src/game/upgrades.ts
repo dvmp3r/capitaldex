@@ -3,9 +3,9 @@ import { REGION_NAME, type Region } from "./regions";
 import { RARITIES, type Rarity } from "./types";
 
 /**
- * Mejoras permanentes presentadas como titulares de prensa. Se compran con capital
- * y multiplican los ingresos (o mejoran el bróker, el clic, el progreso offline, las noticias).
- * Los textos son contenido del juego (como los nombres de empresa); se traducirán en la fase 2.
+ * Titulares: series de mejoras por niveles presentadas como noticias de prensa.
+ * Cada nivel da un poco más que el anterior (curva creciente) y cuesta más; el titular
+ * que se muestra cambia por tramos de niveles. Los textos son contenido del juego.
  */
 export type UpgradeEffect =
   | { kind: "sector"; sector: string; mult: number }
@@ -19,35 +19,41 @@ export type UpgradeEffect =
   | { kind: "newsFrequency"; mult: number }
   | { kind: "newsDuration"; mult: number };
 
+export type SeriesKind = UpgradeEffect["kind"];
+
+export interface Series {
+  id: string;
+  category: string;
+  kind: SeriesKind;
+  /** Objetivo según el tipo: sector, región o rareza. */
+  target?: string;
+  /** Titulares por tramo de niveles: [titular, cuerpo]. */
+  headlines: [string, string][];
+  maxLevel: number;
+  baseCost: number;
+  costGrowth: number;
+  /** Requisito para subir al nivel `level` (1..maxLevel). */
+  requirement: (level: number) => Requirement | undefined;
+}
+
 export interface Requirement {
   companies?: number;
   inSector?: [string, number];
   inRegion?: [Region, number];
   ofRarity?: [Rarity, number];
   pulls?: number;
-  upgrade?: string;
 }
 
-export interface Upgrade {
-  id: string;
-  /** Categoría visible: "Energía", "Europa", "Legendarias", "Mercado", "Bróker"… */
-  category: string;
-  headline: string;
-  body: string;
-  effect: UpgradeEffect;
-  cost: number;
-  requires?: Requirement;
-}
-
-/** Contexto del jugador para comprobar requisitos. */
 export interface PlayerContext {
   companies: number;
   pulls: number;
   bySector: Record<string, number>;
   byRegion: Record<Region, number>;
   byRarity: Record<Rarity, number>;
-  owned: Set<string>;
 }
+
+/** Niveles comprados por serie. */
+export type UpgradeLevels = Record<string, number>;
 
 export interface Multipliers {
   global: number;
@@ -68,6 +74,26 @@ export interface Boost {
   effect: UpgradeEffect;
   until: number; // epoch ms
 }
+
+/* ---------- Curvas ---------- */
+
+/** Bonus del nivel i de una serie multiplicativa: +5 % en el nivel 1, y cada nivel un 10 % más que el anterior. */
+export function levelBonus(level: number): number {
+  return 0.05 * Math.pow(1.1, level - 1);
+}
+
+/** Multiplicador acumulado de una serie multiplicativa hasta `level`. */
+export function cumulativeMult(level: number): number {
+  let m = 1;
+  for (let i = 1; i <= level; i++) m *= 1 + levelBonus(i);
+  return m;
+}
+
+export function seriesCost(s: Series, level: number): number {
+  return Math.round(s.baseCost * Math.pow(s.costGrowth, level - 1));
+}
+
+/* ---------- Definición de series ---------- */
 
 const SECTOR_HEADLINES: Record<string, [string, string][]> = {
   "Energía": [
@@ -132,12 +158,6 @@ const SECTOR_HEADLINES: Record<string, [string, string][]> = {
   ],
 };
 
-const SECTOR_TIERS: { mult: number; cost: number; need: number }[] = [
-  { mult: 2, cost: 1_500, need: 3 },
-  { mult: 2, cost: 40_000, need: 8 },
-  { mult: 3, cost: 1_200_000, need: 15 },
-];
-
 const REGION_HEADLINES: Record<Region, [string, string][]> = {
   US: [
     ["La Reserva Federal baja tipos", "Wall Street en máximos históricos."],
@@ -166,114 +186,186 @@ const REGION_HEADLINES: Record<Region, [string, string][]> = {
   ],
 };
 
-const REGION_TIERS: { mult: number; cost: number; need: number }[] = [
-  { mult: 2, cost: 8_000, need: 5 },
-  { mult: 2, cost: 250_000, need: 15 },
-  { mult: 3, cost: 6_000_000, need: 40 },
-];
-
 const RARITY_HEADLINES: Record<Rarity, [string, string][]> = {
   comun: [
     ["Las pequeñas cotizadas lideran el rebote", "Los analistas redescubren el valor olvidado."],
     ["Rotación hacia las empresas medianas", "El dinero inteligente baja de las grandes."],
+    ["La revancha de las pequeñas", "Las comunes crecen más que nadie."],
   ],
   poco_comun: [
     ["Las medianas crecen más que nadie", "Beneficios al alza en el segundo escalón de la bolsa."],
     ["Fiebre de opas sobre las medianas", "Los grandes pagan primas del 40 %."],
+    ["El escalón medio se hace grande", "Las poco comunes entran en los índices."],
   ],
   rara: [
     ["Las grandes capitalizaciones recuperan el liderazgo", "Dividendos sólidos y recompras."],
     ["Los índices se concentran", "Las 100 mayores pesan más que nunca."],
+    ["Las raras marcan el ritmo", "Los gestores no pueden no tenerlas."],
   ],
   epica: [
     ["Las gigantes presentan resultados récord", "Márgenes imposibles para el resto del mercado."],
     ["Los fondos pasivos solo compran gigantes", "Cuanto más grande, más sube."],
+    ["La era de las megacapitalizaciones", "Las épicas mandan en la bolsa."],
   ],
   legendaria: [
     ["El club del billón de dólares", "Las legendarias capturan la mitad de las ganancias mundiales."],
     ["Monopolios de facto", "Nadie puede competir con las legendarias."],
+    ["Leyendas vivas", "Las legendarias valen más que países enteros."],
   ],
 };
-const RARITY_TIERS: Record<Rarity, { costs: [number, number]; need: number }> = {
-  comun: { costs: [3_000, 90_000], need: 5 },
-  poco_comun: { costs: [12_000, 350_000], need: 3 },
-  rara: { costs: [60_000, 1_800_000], need: 2 },
-  epica: { costs: [300_000, 9_000_000], need: 1 },
-  legendaria: { costs: [1_500_000, 45_000_000], need: 1 },
-};
+const RARITY_BASE_COST: Record<Rarity, number> = { comun: 2_500, poco_comun: 10_000, rara: 50_000, epica: 250_000, legendaria: 1_250_000 };
+const RARITY_NEED: Record<Rarity, number> = { comun: 4, poco_comun: 2, rara: 2, epica: 1, legendaria: 1 };
 
-function build(): Upgrade[] {
-  const out: Upgrade[] = [];
-  for (const [sector, lines] of Object.entries(SECTOR_HEADLINES)) {
-    lines.forEach(([headline, body], i) => {
-      const tier = SECTOR_TIERS[i];
-      out.push({
-        id: `sector:${sector}:${i + 1}`,
-        category: sector,
-        headline,
-        body,
-        effect: { kind: "sector", sector, mult: tier.mult },
-        cost: tier.cost,
-        requires: { inSector: [sector, tier.need], ...(i > 0 ? { upgrade: `sector:${sector}:${i}` } : {}) },
-      });
+function build(): Series[] {
+  const out: Series[] = [];
+  for (const [sector, headlines] of Object.entries(SECTOR_HEADLINES)) {
+    out.push({
+      id: `sector:${sector}`, category: sector, kind: "sector", target: sector, headlines,
+      maxLevel: 25, baseCost: 1_200, costGrowth: 1.5,
+      requirement: (level) => ({ inSector: [sector, 2 + level] }),
     });
   }
   for (const region of Object.keys(REGION_HEADLINES) as Region[]) {
-    REGION_HEADLINES[region].forEach(([headline, body], i) => {
-      const tier = REGION_TIERS[i];
-      out.push({
-        id: `region:${region}:${i + 1}`,
-        category: REGION_NAME[region],
-        headline,
-        body,
-        effect: { kind: "region", region, mult: tier.mult },
-        cost: tier.cost,
-        requires: { inRegion: [region, tier.need], ...(i > 0 ? { upgrade: `region:${region}:${i}` } : {}) },
-      });
+    out.push({
+      id: `region:${region}`, category: REGION_NAME[region], kind: "region", target: region, headlines: REGION_HEADLINES[region],
+      maxLevel: 25, baseCost: 6_000, costGrowth: 1.5,
+      requirement: (level) => ({ inRegion: [region, 3 + 2 * level] }),
     });
   }
   for (const rarity of RARITIES) {
-    RARITY_HEADLINES[rarity].forEach(([headline, body], i) => {
-      const t = RARITY_TIERS[rarity];
-      out.push({
-        id: `rarity:${rarity}:${i + 1}`,
-        category: `Rareza`,
-        headline,
-        body,
-        effect: { kind: "rarity", rarity, mult: i === 0 ? 2 : 3 },
-        cost: t.costs[i],
-        requires: { ofRarity: [rarity, t.need], ...(i > 0 ? { upgrade: `rarity:${rarity}:${i}` } : {}) },
-      });
+    out.push({
+      id: `rarity:${rarity}`, category: "Rareza", kind: "rarity", target: rarity, headlines: RARITY_HEADLINES[rarity],
+      maxLevel: 15, baseCost: RARITY_BASE_COST[rarity], costGrowth: 1.6,
+      requirement: (level) => ({ ofRarity: [rarity, RARITY_NEED[rarity] + Math.floor(level / 2) * RARITY_NEED[rarity]] }),
     });
   }
-  const globals: [string, string, number, number, number][] = [
-    ["Rally de fin de año", "Todo sube: los gestores maquillan carteras.", 2, 20_000, 10],
-    ["Los fondos de pensiones entran en bolsa", "Compras masivas en todos los sectores.", 2, 500_000, 40],
-    ["La década dorada de la bolsa", "Crecimiento, tipos bajos y beneficios récord.", 3, 15_000_000, 100],
-    ["Tu holding entra en el índice mundial", "Todos los fondos indexados tienen que comprarte.", 3, 400_000_000, 200],
-  ];
-  globals.forEach(([headline, body, mult, cost, need], i) => {
-    out.push({ id: `global:${i + 1}`, category: "Mercado", headline, body, effect: { kind: "global", mult }, cost, requires: { companies: need, ...(i > 0 ? { upgrade: `global:${i}` } : {}) } });
+  out.push({
+    id: "global", category: "Mercado", kind: "global",
+    headlines: [
+      ["Rally de fin de año", "Todo sube: los gestores maquillan carteras."],
+      ["Los fondos de pensiones entran en bolsa", "Compras masivas en todos los sectores."],
+      ["La década dorada de la bolsa", "Crecimiento, tipos bajos y beneficios récord."],
+    ],
+    maxLevel: 25, baseCost: 15_000, costGrowth: 1.6,
+    requirement: (level) => ({ companies: 8 + 6 * level }),
   });
-  const broker: Upgrade[] = [
-    { id: "gacha:1", category: "Bróker", headline: "Tu bróker te rebaja las comisiones", body: "Las carteras cuestan un 10 % menos.", effect: { kind: "gachaDiscount", pct: 10 }, cost: 5_000, requires: { pulls: 10 } },
-    { id: "gacha:2", category: "Bróker", headline: "Cuenta premium con comisiones mínimas", body: "Las carteras cuestan otro 15 % menos.", effect: { kind: "gachaDiscount", pct: 15 }, cost: 150_000, requires: { pulls: 40, upgrade: "gacha:1" } },
-    { id: "gacha:3", category: "Bróker", headline: "Asiento propio en la bolsa", body: "Las carteras cuestan otro 20 % menos.", effect: { kind: "gachaDiscount", pct: 20 }, cost: 4_000_000, requires: { pulls: 120, upgrade: "gacha:2" } },
-    { id: "click:1", category: "Mesa de operaciones", headline: "Terminal profesional", body: "Operar vale 10 segundos más de ingresos.", effect: { kind: "clickSeconds", add: 10 }, cost: 2_500, requires: { pulls: 5 } },
-    { id: "click:2", category: "Mesa de operaciones", headline: "Mesa de trading con tres pantallas", body: "Operar vale 30 segundos más de ingresos.", effect: { kind: "clickSeconds", add: 30 }, cost: 80_000, requires: { upgrade: "click:1" } },
-    { id: "click:3", category: "Mesa de operaciones", headline: "Algoritmo de alta frecuencia", body: "Operar vale 2 minutos más de ingresos.", effect: { kind: "clickSeconds", add: 120 }, cost: 2_500_000, requires: { upgrade: "click:2" } },
-    { id: "offline:1", category: "Mesa de operaciones", headline: "Operaciones nocturnas en Asia", body: "Progreso offline al 75 %.", effect: { kind: "offlineRate", set: 0.75 }, cost: 50_000, requires: { companies: 15 } },
-    { id: "offline:2", category: "Mesa de operaciones", headline: "Equipo de guardia 24 horas", body: "Progreso offline al 100 %.", effect: { kind: "offlineRate", set: 1 }, cost: 1_500_000, requires: { upgrade: "offline:1" } },
-    { id: "offline:3", category: "Mesa de operaciones", headline: "Gestor automático de carteras", body: "El progreso offline cubre hasta 24 horas.", effect: { kind: "offlineCapHours", set: 24 }, cost: 300_000, requires: { upgrade: "offline:1" } },
-    { id: "news:1", category: "Agencia de noticias", headline: "Suscripción a la agencia de noticias", body: "Las noticias de última hora llegan un 50 % más a menudo.", effect: { kind: "newsFrequency", mult: 1.5 }, cost: 30_000, requires: { pulls: 15 } },
-    { id: "news:2", category: "Agencia de noticias", headline: "Contactos en el parqué", body: "Los efectos de las noticias duran un 50 % más.", effect: { kind: "newsDuration", mult: 1.5 }, cost: 120_000, requires: { upgrade: "news:1" } },
-    { id: "news:3", category: "Agencia de noticias", headline: "Terminal de noticias en tiempo real", body: "Las noticias llegan el doble de a menudo.", effect: { kind: "newsFrequency", mult: 2 }, cost: 3_000_000, requires: { upgrade: "news:2" } },
-  ];
-  return [...out, ...broker];
+  out.push({
+    id: "gacha", category: "Bróker", kind: "gachaDiscount",
+    headlines: [
+      ["Tu bróker te rebaja las comisiones", "Cada nivel abarata un poco más las carteras."],
+      ["Cuenta premium con comisiones mínimas", "Las carteras siguen bajando de precio."],
+      ["Asiento propio en la bolsa", "Comisiones de insider."],
+    ],
+    maxLevel: 10, baseCost: 4_000, costGrowth: 1.8,
+    requirement: (level) => ({ pulls: 5 + 10 * level }),
+  });
+  out.push({
+    id: "click", category: "Mesa de operaciones", kind: "clickSeconds",
+    headlines: [
+      ["Terminal profesional", "Operar vale más segundos de ingresos."],
+      ["Mesa de trading con tres pantallas", "Cada operación rinde más."],
+      ["Algoritmo de alta frecuencia", "Operar a lo grande."],
+    ],
+    maxLevel: 10, baseCost: 2_000, costGrowth: 1.7,
+    requirement: (level) => ({ pulls: 3 + 6 * level }),
+  });
+  out.push({
+    id: "offlineRate", category: "Mesa de operaciones", kind: "offlineRate",
+    headlines: [
+      ["Operaciones nocturnas en Asia", "El progreso offline rinde un poco más."],
+      ["Equipo de guardia 24 horas", "Casi todo el tiempo ausente cuenta."],
+      ["Gestor automático de carteras", "Ausente o no, la cartera trabaja."],
+    ],
+    maxLevel: 10, baseCost: 40_000, costGrowth: 1.6,
+    requirement: (level) => ({ companies: 10 + 5 * level }),
+  });
+  out.push({
+    id: "offlineCap", category: "Mesa de operaciones", kind: "offlineCapHours",
+    headlines: [
+      ["Un ayudante por las tardes", "El progreso offline cubre más horas."],
+      ["Turno de noche", "Hasta un día entero de ausencia."],
+      ["Oficinas en tres continentes", "Siempre hay un mercado abierto."],
+    ],
+    maxLevel: 10, baseCost: 60_000, costGrowth: 1.6,
+    requirement: (level) => ({ companies: 12 + 6 * level }),
+  });
+  out.push({
+    id: "newsFrequency", category: "Agencia de noticias", kind: "newsFrequency",
+    headlines: [
+      ["Suscripción a la agencia de noticias", "Las noticias de última hora llegan más a menudo."],
+      ["Contactos en el parqué", "Te enteras antes que nadie."],
+      ["Terminal de noticias en tiempo real", "Nada se te escapa."],
+    ],
+    maxLevel: 10, baseCost: 25_000, costGrowth: 1.7,
+    requirement: (level) => ({ pulls: 10 + 10 * level }),
+  });
+  out.push({
+    id: "newsDuration", category: "Agencia de noticias", kind: "newsDuration",
+    headlines: [
+      ["Un buen titular dura más", "Los efectos de las noticias se alargan."],
+      ["Editorial en portada", "Las noticias se comentan durante días."],
+      ["Tu agencia marca la agenda", "Cada noticia se convierte en tendencia."],
+    ],
+    maxLevel: 10, baseCost: 80_000, costGrowth: 1.7,
+    requirement: (level) => ({ pulls: 20 + 15 * level }),
+  });
+  return out;
 }
 
-export const UPGRADES: Upgrade[] = build();
-export const UPGRADE_BY_ID: Map<string, Upgrade> = new Map(UPGRADES.map((u) => [u.id, u]));
+export const SERIES: Series[] = build();
+export const SERIES_BY_ID: Map<string, Series> = new Map(SERIES.map((s) => [s.id, s]));
+
+/** Titular que se muestra según el nivel actual (tres tramos). */
+export function seriesHeadline(s: Series, level: number): [string, string] {
+  const i = Math.min(s.headlines.length - 1, Math.floor((level / s.maxLevel) * s.headlines.length));
+  return s.headlines[i];
+}
+
+/** Valor acumulado de una serie en un nivel: multiplicador, descuento, segundos, etc. */
+export function seriesValue(s: Series, level: number): number {
+  switch (s.kind) {
+    case "sector": case "region": case "rarity": case "global": case "newsFrequency": case "newsDuration":
+      return cumulativeMult(level);
+    case "gachaDiscount":
+      return 1 - Math.pow(0.98, level); // 2 % por nivel, compuesto: 18 % en el nivel 10
+    case "clickSeconds": {
+      let add = 0;
+      for (let i = 1; i <= level; i++) add += 2 * Math.pow(1.25, i - 1);
+      return add; // +2 s, +2,5 s, +3,1 s… ≈ +66 s en el nivel 10
+    }
+    case "offlineRate":
+      return Math.min(1, OFFLINE_RATE + 0.05 * level);
+    case "offlineCapHours":
+      return OFFLINE_CAP_SECONDS / 3600 + 1.6 * level; // 8 h → 24 h
+  }
+}
+
+/** Texto del valor acumulado: "×1,34", "−12 %", "+14 s", "85 %", "16 h". */
+export function seriesValueLabel(s: Series, level: number): string {
+  const v = seriesValue(s, level);
+  switch (s.kind) {
+    case "gachaDiscount": return `−${Math.round(v * 100)} %`;
+    case "clickSeconds": return `+${Math.round(v)} s`;
+    case "offlineRate": return `${Math.round(v * 100)} %`;
+    case "offlineCapHours": return `${Math.round(v)} h`;
+    default: return `×${v.toFixed(2)}`;
+  }
+}
+
+export function seriesTargetLabel(s: Series, rarityLabel: (r: Rarity) => string): string {
+  switch (s.kind) {
+    case "sector": return s.target!;
+    case "region": return REGION_NAME[s.target as Region];
+    case "rarity": return `${rarityLabel(s.target as Rarity)}s`;
+    case "global": return "Todo";
+    case "gachaDiscount": return "Carteras";
+    case "clickSeconds": return "Operar";
+    case "offlineRate": return "Offline";
+    case "offlineCapHours": return "Offline";
+    case "newsFrequency": return "Noticias";
+    case "newsDuration": return "Duración";
+  }
+}
 
 export function requirementMet(req: Requirement | undefined, ctx: PlayerContext): boolean {
   if (!req) return true;
@@ -282,14 +374,12 @@ export function requirementMet(req: Requirement | undefined, ctx: PlayerContext)
   if (req.inSector && (ctx.bySector[req.inSector[0]] ?? 0) < req.inSector[1]) return false;
   if (req.inRegion && (ctx.byRegion[req.inRegion[0]] ?? 0) < req.inRegion[1]) return false;
   if (req.ofRarity && (ctx.byRarity[req.ofRarity[0]] ?? 0) < req.ofRarity[1]) return false;
-  if (req.upgrade && !ctx.owned.has(req.upgrade)) return false;
   return true;
 }
 
 /** Texto del requisito pendiente (el primero que no se cumple), o null si se cumplen todos. */
 export function requirementText(req: Requirement | undefined, ctx: PlayerContext, rarityLabel: (r: Rarity) => string): string | null {
   if (!req) return null;
-  if (req.upgrade && !ctx.owned.has(req.upgrade)) return `Requiere "${UPGRADE_BY_ID.get(req.upgrade)?.headline ?? req.upgrade}"`;
   if (req.companies !== undefined && ctx.companies < req.companies) return `Requiere ${req.companies} empresas distintas (tienes ${ctx.companies})`;
   if (req.pulls !== undefined && ctx.pulls < req.pulls) return `Requiere ${req.pulls} carteras abiertas (llevas ${ctx.pulls})`;
   if (req.inSector && (ctx.bySector[req.inSector[0]] ?? 0) < req.inSector[1]) return `Requiere ${req.inSector[1]} empresas de ${req.inSector[0]} (tienes ${ctx.bySector[req.inSector[0]] ?? 0})`;
@@ -313,33 +403,45 @@ export function baseMultipliers(): Multipliers {
   };
 }
 
-function apply(m: Multipliers, e: UpgradeEffect) {
+function applySeries(m: Multipliers, s: Series, level: number) {
+  if (level <= 0) return;
+  const v = seriesValue(s, level);
+  switch (s.kind) {
+    case "sector": m.sector[s.target!] = (m.sector[s.target!] ?? 1) * v; break;
+    case "region": m.region[s.target as Region] *= v; break;
+    case "rarity": m.rarity[s.target as Rarity] *= v; break;
+    case "global": m.global *= v; break;
+    case "gachaDiscount": m.gachaCost *= 1 - v; break;
+    case "clickSeconds": m.clickSeconds += v; break;
+    case "offlineRate": m.offlineRate = Math.max(m.offlineRate, v); break;
+    case "offlineCapHours": m.offlineCapSeconds = Math.max(m.offlineCapSeconds, v * 3600); break;
+    case "newsFrequency": m.newsFrequency *= v; break;
+    case "newsDuration": m.newsDuration *= v; break;
+  }
+}
+
+function applyBoost(m: Multipliers, e: UpgradeEffect) {
   switch (e.kind) {
     case "sector": m.sector[e.sector] = (m.sector[e.sector] ?? 1) * e.mult; break;
     case "region": m.region[e.region] *= e.mult; break;
     case "rarity": m.rarity[e.rarity] *= e.mult; break;
     case "global": m.global *= e.mult; break;
-    case "gachaDiscount": m.gachaCost *= 1 - e.pct / 100; break;
-    case "clickSeconds": m.clickSeconds += e.add; break;
-    case "offlineRate": m.offlineRate = Math.max(m.offlineRate, e.set); break;
-    case "offlineCapHours": m.offlineCapSeconds = Math.max(m.offlineCapSeconds, e.set * 3600); break;
-    case "newsFrequency": m.newsFrequency *= e.mult; break;
-    case "newsDuration": m.newsDuration *= e.mult; break;
+    default: break;
   }
 }
 
-/** Multiplicadores vigentes: mejoras compradas más noticias activas en `now`. */
-export function computeMultipliers(owned: Iterable<string>, boosts: Boost[] = [], now = Date.now()): Multipliers {
+/** Multiplicadores vigentes: niveles comprados más noticias activas en `now`. */
+export function computeMultipliers(levels: UpgradeLevels, boosts: Boost[] = [], now = Date.now()): Multipliers {
   const m = baseMultipliers();
-  for (const id of owned) {
-    const u = UPGRADE_BY_ID.get(id);
-    if (u) apply(m, u.effect);
+  for (const [id, level] of Object.entries(levels)) {
+    const s = SERIES_BY_ID.get(id);
+    if (s) applySeries(m, s, Math.min(level, s.maxLevel));
   }
-  for (const b of boosts) if (b.until > now) apply(m, b.effect);
+  for (const b of boosts) if (b.until > now) applyBoost(m, b.effect);
   return m;
 }
 
-/** Texto corto del efecto: "Energía ×2", "Carteras −10 %"… */
+/** Texto corto del efecto de una noticia: "Energía ×3", "Todo ×2"… */
 export function effectLabel(e: UpgradeEffect, rarityLabel: (r: Rarity) => string): string {
   switch (e.kind) {
     case "sector": return `${e.sector} ×${e.mult}`;
@@ -353,4 +455,23 @@ export function effectLabel(e: UpgradeEffect, rarityLabel: (r: Rarity) => string
     case "newsFrequency": return `Noticias ×${e.mult}`;
     case "newsDuration": return `Duración ×${e.mult}`;
   }
+}
+
+/** Migra los ids antiguos ("sector:Energía:2") a niveles por serie. */
+export function migrateLegacyUpgrades(ids: string[]): UpgradeLevels {
+  const levels: UpgradeLevels = {};
+  for (const id of ids) {
+    const m = /^(sector|region|rarity):(.+):(\d+)$/.exec(id);
+    if (m) {
+      const key = `${m[1]}:${m[2]}`;
+      levels[key] = Math.max(levels[key] ?? 0, Number(m[3]));
+      continue;
+    }
+    const g = /^(global|gacha|click|news|offline):(\d+)$/.exec(id);
+    if (g) {
+      const key = g[1] === "news" ? "newsFrequency" : g[1] === "offline" ? "offlineRate" : g[1];
+      levels[key] = Math.max(levels[key] ?? 0, Number(g[2]));
+    }
+  }
+  return levels;
 }

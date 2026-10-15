@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { FREE_PULLS, GACHA_ODDS, PITY_EPIC, PITY_LEGENDARY, PULL_BASE_COST, PULL_COST_GROWTH } from "./balance";
-import { applyPity, INITIAL_GACHA, nextGachaState, pickCompany, pullCost, rollPull, weightedRarity } from "./gacha";
+import { FREE_PULLS, GACHA_ODDS, PULL_BASE_COST, PULL_COST_GROWTH } from "./balance";
+import { INITIAL_GACHA, nextGachaState, pickCompany, pullCost, rollPull, weightedRarity } from "./gacha";
 import { RARITIES, type Company, type Rarity } from "./types";
 
 /** Generador determinista (mulberry32) para pruebas reproducibles. */
@@ -56,41 +56,20 @@ describe("probabilidades", () => {
   });
 });
 
-describe("piedad", () => {
-  it("no interviene antes de tiempo", () => {
-    expect(applyPity("comun", { pulls: 5, sinceEpic: 5, sinceLegendary: 5 })).toEqual({ rarity: "comun", pity: false });
-  });
-
-  it("garantiza épica en la tirada PITY_EPIC", () => {
-    const state = { pulls: 0, sinceEpic: PITY_EPIC - 1, sinceLegendary: 0 };
-    expect(applyPity("comun", state)).toEqual({ rarity: "epica", pity: true });
-    expect(applyPity("legendaria", state)).toEqual({ rarity: "legendaria", pity: false });
-  });
-
-  it("garantiza legendaria en la tirada PITY_LEGENDARY", () => {
-    const state = { pulls: 0, sinceEpic: 0, sinceLegendary: PITY_LEGENDARY - 1 };
-    expect(applyPity("rara", state)).toEqual({ rarity: "legendaria", pity: true });
-  });
-
-  it("los contadores se reinician con la rareza adecuada", () => {
+describe("sin piedad", () => {
+  it("los contadores de racha se reinician con la rareza adecuada", () => {
     const s = nextGachaState({ pulls: 3, sinceEpic: 7, sinceLegendary: 20 }, "epica");
     expect(s).toEqual({ pulls: 4, sinceEpic: 0, sinceLegendary: 21 });
     expect(nextGachaState(s, "legendaria")).toEqual({ pulls: 5, sinceEpic: 0, sinceLegendary: 0 });
-    expect(nextGachaState(s, "comun").sinceEpic).toBe(1);
   });
 
-  it("en una secuencia larga nunca pasan más de PITY_EPIC tiradas sin épica", () => {
-    const rng = seeded(7);
-    let state = INITIAL_GACHA;
-    let gap = 0;
-    let maxGap = 0;
-    for (let i = 0; i < 20_000; i++) {
-      const r = rollPull(POOL, state, rng);
-      state = r.next;
-      if (r.rarity === "epica" || r.rarity === "legendaria") gap = 0;
-      else maxGap = Math.max(maxGap, ++gap);
-    }
-    expect(maxGap).toBeLessThan(PITY_EPIC);
+  it("una racha larga sin épica no fuerza nada: la probabilidad es pura", () => {
+    let state = { ...INITIAL_GACHA, sinceEpic: 500, sinceLegendary: 5000 };
+    const r = rollPull(POOL, state, () => 0); // rng 0 → común siempre
+    expect(r.rarity).toBe("comun");
+    expect(r.pity).toBe(false);
+    state = r.next;
+    expect(state.sinceEpic).toBe(501);
   });
 });
 

@@ -46,7 +46,8 @@ export function parseSave(text: string): ParseResult {
     }
   }
   // Campos de la versión 2 (opcionales en partidas antiguas)
-  if (d.upgrades !== undefined && !(Array.isArray(d.upgrades) && d.upgrades.every((u) => typeof u === "string"))) {
+  const upgradesOk = d.upgrades === undefined || (Array.isArray(d.upgrades) && d.upgrades.every((u) => typeof u === "string")) || (isRecord(d.upgrades) && Object.values(d.upgrades).every((v) => isInt(v)));
+  if (!upgradesOk) {
     return { ok: false, error: t("save.invalidField", { field: "upgrades" }) };
   }
   if (d.boosts !== undefined && !(Array.isArray(d.boosts) && d.boosts.every((b) => isRecord(b) && typeof b.id === "string" && isFiniteNumber(b.until) && isRecord(b.effect)))) {

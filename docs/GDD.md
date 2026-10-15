@@ -85,7 +85,7 @@ Las tres primeras carteras son gratis (tutorial). El exponente se ajustará con 
 
 Dentro de una rareza, todas las empresas tienen la misma probabilidad.
 
-**Piedad (pity):** cada 20 carteras sin épica o legendaria, la siguiente garantiza épica o superior. Cada 90 sin legendaria, la siguiente garantiza legendaria. El contador se ve en pantalla.
+**Sin piedad (decisión de Jorge, 15-oct-2026):** cada cartera es una tirada pura. El juego debe ser difícil de completar; se muestran las rachas sin épica y sin legendaria como dato, no como garantía.
 
 ### Duplicados = acciones
 
