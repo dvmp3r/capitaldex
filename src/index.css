@@ -110,17 +110,40 @@ h1, h2, h3 { text-wrap: balance; }
   z-index: -1;
   pointer-events: none;
 }
-.stage[data-legendary="true"]::before {
+/* Halo al revelar la carta: color e intensidad según la rareza (las comunes no tienen) */
+.stage[data-reveal]::before {
   content: "";
   position: absolute;
   inset: -30%;
   border-radius: 50%;
-  background: radial-gradient(farthest-side, oklch(0.84 0.15 88 / 0.5), oklch(0.84 0.15 88 / 0.2) 55%, transparent 100%);
+  background: radial-gradient(farthest-side, oklch(from var(--halo) l c h / 0.5), oklch(from var(--halo) l c h / 0.2) 55%, transparent 100%);
   filter: blur(8px);
   animation: burst 1.8s var(--ease-out-quint) both;
   pointer-events: none;
   z-index: -1;
 }
+.stage[data-reveal="comun"]::before { display: none; }
+.stage[data-reveal="poco_comun"]::before { --halo: var(--color-poco_comun); opacity: 0.5; animation-duration: 1s; }
+.stage[data-reveal="rara"]::before { --halo: var(--color-rara); opacity: 0.75; animation-duration: 1.3s; }
+.stage[data-reveal="epica"]::before { --halo: var(--color-epica); }
+.stage[data-reveal="legendaria"]::before { --halo: var(--color-legendaria); }
+/* Rayos que giran detrás de la carta: solo épicas y legendarias */
+.stage-rays { position: absolute; inset: -45%; pointer-events: none; z-index: -1; animation: rays-in 900ms ease-out both; }
+.stage-rays::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, var(--ray) 0deg 8deg, transparent 8deg 22deg);
+  -webkit-mask: radial-gradient(closest-side, black 15%, transparent 75%);
+  mask: radial-gradient(closest-side, black 15%, transparent 75%);
+  animation: rays-spin 16s linear infinite;
+}
+.stage[data-reveal="epica"] .stage-rays { --ray: oklch(0.72 0.2 300 / 0.2); }
+.stage[data-reveal="legendaria"] .stage-rays { --ray: oklch(0.86 0.15 88 / 0.3); }
+.stage[data-reveal="legendaria"] .stage-rays::before { animation-duration: 10s; }
+@keyframes rays-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rays-spin { to { transform: rotate(360deg); } }
 @keyframes burst {
   0%   { transform: scale(0.3); opacity: 0; }
   35%  { transform: scale(1.1); opacity: 1; }
@@ -137,13 +160,37 @@ h1, h2, h3 { text-wrap: balance; }
 .machine-caps-idle .machine-cap { animation: cap-breathe 4s ease-in-out infinite alternate; }
 @keyframes cap-breathe { from { transform: translateY(0); } to { transform: translateY(1.5px); } }
 
-/* La carta sube desde la cápsula */
+/* La carta sube desde la cápsula. Cuanto más rara, más ceremonia. */
 .card-rise { animation: card-rise 700ms var(--ease-out-quint) both; transform-origin: 70% 100%; }
 @keyframes card-rise {
   0%   { opacity: 0; transform: translate(14%, 34%) scale(0.28); filter: blur(6px); }
   55%  { opacity: 1; filter: blur(0); }
   80%  { transform: translate(0, -1.5%) scale(1.02); }
   100% { opacity: 1; transform: none; filter: none; }
+}
+.card-rise-comun { animation: card-rise-plain 460ms var(--ease-out-quint) both; }
+@keyframes card-rise-plain {
+  0%   { opacity: 0; transform: translate(10%, 28%) scale(0.4); }
+  100% { opacity: 1; transform: none; }
+}
+.card-rise-epica { animation: card-rise-epic 950ms var(--ease-out-quint) both; }
+@keyframes card-rise-epic {
+  0%   { opacity: 0; transform: translate(14%, 34%) scale(0.28); filter: blur(6px); }
+  42%  { opacity: 1; transform: translate(0, 0) scale(1.09); filter: blur(0) brightness(1.5); }
+  54%  { transform: translate(-1.4%, 0) scale(1.07); filter: brightness(1.2); }
+  64%  { transform: translate(1.2%, 0) scale(1.05); }
+  74%  { transform: translate(-0.8%, 0) scale(1.03); }
+  84%  { transform: translate(0.5%, 0) scale(1.01); }
+  100% { transform: none; filter: none; }
+}
+.card-rise-legendaria { animation: card-rise-legend 1400ms var(--ease-out-quint) both; }
+@keyframes card-rise-legend {
+  0%   { opacity: 0; transform: translate(14%, 34%) scale(0.2); filter: blur(8px) brightness(2.5); }
+  30%  { opacity: 1; transform: translate(0, 6%) scale(0.5); filter: blur(0) brightness(1.8); }
+  52%  { transform: translate(0, 6%) scale(0.56); filter: brightness(2.4); }
+  66%  { transform: translate(0, -2%) scale(1.14); filter: brightness(1.3); }
+  80%  { transform: translate(0, 0.6%) scale(0.98); filter: brightness(1); }
+  100% { transform: none; filter: none; }
 }
 .card-sheen { position: absolute; inset: 0; border-radius: var(--radius-card); pointer-events: none; overflow: hidden; }
 .card-sheen::after {
@@ -202,6 +249,42 @@ h1, h2, h3 { text-wrap: balance; }
 .btn-ghost:hover { background: var(--color-surface-2); }
 .btn-ghost:active { transform: translateY(1px); }
 
+.chip {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-line-strong);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: background-color 150ms, color 150ms, border-color 150ms;
+}
+.chip:hover { color: var(--color-ink); border-color: oklch(0.5 0 0); }
+.chip-on { background: var(--color-ink); color: var(--color-bg); border-color: var(--color-ink); }
+
+/* Tarjetas de series del Mercado */
+.series-card { transition: box-shadow 200ms, opacity 200ms; }
+.series-card[data-state="buy"] { box-shadow: 0 0 0 1px oklch(0.84 0.15 88 / 0.55) inset, 0 0 20px -12px oklch(0.84 0.15 88 / 0.6); }
+.series-card[data-state="locked"] { opacity: 0.62; }
+.series-card[data-state="max"] { opacity: 0.8; }
+
+/* Anillo de progreso con gradiente cónico; --p en porcentaje */
+.ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: conic-gradient(var(--color-gold) calc(var(--p) * 1%), var(--color-surface-2) 0);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+.ring::before { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--color-surface); }
+.ring > span { position: relative; }
+
 .meter { height: 4px; border-radius: 999px; background: var(--color-surface-2); overflow: hidden; }
 .meter > i { display: block; height: 100%; border-radius: inherit; transition: width 300ms var(--ease-out-quint); }
 
@@ -224,14 +307,16 @@ h1, h2, h3 { text-wrap: balance; }
 
 @media (prefers-reduced-motion: reduce) {
   .card[data-rarity="legendaria"]::after { animation: none; opacity: 0.35; }
-  .stage[data-legendary="true"]::before { animation: burst-fade 600ms ease-out both; }
-  .rise, .card-rise, .intro-in, .intro-in-2, .intro-in-3 { animation: rise-fade 200ms ease-out both; }
+  .stage[data-reveal]::before { animation: burst-fade 600ms ease-out both; }
+  .stage-rays { display: none; }
+  .rise, .card-rise, .card-rise-comun, .card-rise-epica, .card-rise-legendaria, .intro-in, .intro-in-2, .intro-in-3 { animation: rise-fade 200ms ease-out both; }
   .card-sheen::after, .machine-caps-idle .machine-cap { animation: none; }
   .card-interactive:hover { transform: none; }
 }
 html[data-motion="reduced"] .card[data-rarity="legendaria"]::after { animation: none; opacity: 0.35; }
-html[data-motion="reduced"] .stage[data-legendary="true"]::before { animation: burst-fade 600ms ease-out both; }
-html[data-motion="reduced"] :is(.rise, .card-rise, .intro-in, .intro-in-2, .intro-in-3) { animation: rise-fade 200ms ease-out both; }
+html[data-motion="reduced"] .stage[data-reveal]::before { animation: burst-fade 600ms ease-out both; }
+html[data-motion="reduced"] .stage-rays { display: none; }
+html[data-motion="reduced"] :is(.rise, .card-rise, .card-rise-comun, .card-rise-epica, .card-rise-legendaria, .intro-in, .intro-in-2, .intro-in-3) { animation: rise-fade 200ms ease-out both; }
 html[data-motion="reduced"] .card-sheen::after, html[data-motion="reduced"] .machine-caps-idle .machine-cap { animation: none; }
 html[data-motion="reduced"] .card-interactive:hover { transform: none; }
 

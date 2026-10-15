@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { SHARE_MILESTONES } from "../game/balance";
 import { playDrop, playKnob, playMilestone, playPop, playRattle, playReveal } from "../game/sound";
-import type { PullResult } from "../game/types";
+import type { PullResult, Rarity } from "../game/types";
 import { t } from "../i18n";
 import { useGame } from "../store/gameStore";
 import { CompanyCard } from "./CompanyCard";
@@ -118,9 +118,10 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
       onClick={onStageClick}
       role={phase === "idle" && pullEnabled ? "button" : undefined}
       aria-label={phase === "idle" && pullEnabled ? t("gacha.open") : undefined}
-      data-legendary={phase === "revealed" && result?.rarity === "legendaria" ? "true" : undefined}
+      data-reveal={phase === "revealed" && result ? result.rarity : undefined}
     >
       <div className="stage-light" />
+      {phase === "revealed" && result && (result.rarity === "epica" || result.rarity === "legendaria") && <div className="stage-rays" />}
       {HAS_WEBGL ? (
         <Suspense fallback={<div className="h-full w-full" />}>
           <Machine3D ref={machine} dimmed={phase === "revealed"} className="h-full w-full" />
@@ -129,28 +130,38 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
         <Machine2D ref={machine} dimmed={phase === "revealed"} idle={phase === "idle" || phase === "revealed"} className="h-full w-full" />
       )}
       {phase === "revealed" && result && (
-        <div key={revealKey} className="card-rise absolute inset-[4%]">
+        <div key={revealKey} className={`card-rise card-rise-${result.rarity} absolute inset-[4%]`}>
           <CompanyCard company={result.company} shares={result.shares} size="lg" className="h-full w-full shadow-[0_30px_60px_-20px_oklch(0_0_0/0.9)]" />
-          {revealKey > 0 && <div className="card-sheen" />}
+          {revealKey > 0 && SPARKS[result.rarity] > 0 && <div className="card-sheen" />}
         </div>
       )}
-      {phase === "revealed" && result?.rarity === "legendaria" && <Confetti key={`c-${revealKey}`} />}
+      {phase === "revealed" && result && revealKey > 0 && SPARKS[result.rarity] > 0 && (
+        <Confetti key={`c-${revealKey}`} count={SPARKS[result.rarity]} hue={SPARK_HUE[result.rarity]} />
+      )}
       {animating && <span className="absolute bottom-1 left-0 right-0 text-center text-[11px] text-muted">{t("gacha.skipHint")}</span>}
     </div>
   );
 }
 
-/** 40 trocitos dorados que salen disparados desde el centro. Solo CSS. */
-function Confetti() {
-  const pieces = Array.from({ length: 40 }, (_, i) => {
-    const a = (i / 40) * Math.PI * 2 + Math.random() * 0.3;
-    const d = 90 + Math.random() * 160;
-    return { dx: Math.cos(a) * d, dy: Math.sin(a) * d - 60, rot: Math.random() * 720 - 360, delay: Math.random() * 120, hue: 80 + Math.random() * 20, l: 0.8 + Math.random() * 0.15 };
+/** Chispas por rareza: cuántas y de qué tono. Común y poco común no tienen. */
+const SPARKS: Record<Rarity, number> = { comun: 0, poco_comun: 0, rara: 12, epica: 24, legendaria: 44 };
+const SPARK_HUE: Record<Rarity, number> = { comun: 0, poco_comun: 155, rara: 255, epica: 300, legendaria: 88 };
+
+/** Trocitos de color que salen disparados desde el centro. Solo CSS. */
+function Confetti({ count, hue }: { count: number; hue: number }) {
+  const gold = hue === 88;
+  const pieces = Array.from({ length: count }, (_, i) => {
+    const a = (i / count) * Math.PI * 2 + Math.random() * 0.3;
+    const d = (gold ? 90 : 70) + Math.random() * (gold ? 160 : 110);
+    return {
+      dx: Math.cos(a) * d, dy: Math.sin(a) * d - 60, rot: Math.random() * 720 - 360, delay: Math.random() * 120,
+      hue: hue + (Math.random() - 0.5) * 20, l: (gold ? 0.8 : 0.7) + Math.random() * 0.15,
+    };
   });
   return (
     <>
       {pieces.map((p, i) => (
-        <i key={i} className="confetti" style={{ "--dx": `${p.dx}px`, "--dy": `${p.dy}px`, "--rot": `${p.rot}deg`, animationDelay: `${p.delay}ms`, background: `oklch(${p.l} 0.16 ${p.hue})` } as React.CSSProperties} />
+        <i key={i} className="confetti" style={{ "--dx": `${p.dx}px`, "--dy": `${p.dy}px`, "--rot": `${p.rot}deg`, animationDelay: `${p.delay}ms`, background: `oklch(${p.l} 0.17 ${p.hue})` } as React.CSSProperties} />
       ))}
     </>
   );

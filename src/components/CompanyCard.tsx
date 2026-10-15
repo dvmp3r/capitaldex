@@ -2,7 +2,6 @@ import { countryName } from "../data/companies";
 import { companyIncome, nextMilestone } from "../game/economy";
 import { flag, fmt, fmtPct, fmtUsd } from "../game/format";
 import { rarityLabel, rarityOf } from "../game/rarity";
-import { sectorColor } from "../game/sectors";
 import type { Company, Rarity } from "../game/types";
 import { t } from "../i18n";
 import { CardArt } from "./CardArt";
@@ -56,9 +55,8 @@ export function CompanyCard({ company, shares = 0, hidden = false, size = "lg", 
 
       {/* Arte */}
       <div className={`relative mt-2 min-h-0 flex-1 overflow-hidden rounded-lg ${hidden ? "bg-surface-2" : "bg-surface"}`}>
-        <CardArt seed={company.id} sector={company.sector} />
-        <span className={`absolute left-2 top-1.5 inline-flex items-center gap-1 rounded-full bg-bg/90 px-1.5 py-0.5 text-[10px] font-semibold ${hidden ? "text-muted" : "text-ink/80"}`}>
-          <i className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: sectorColor(company.sector) }} />
+        <CardArt seed={company.id} />
+        <span className={`absolute left-2 top-1.5 inline-flex items-center rounded-full bg-bg/90 px-1.5 py-0.5 text-[10px] font-semibold ${hidden ? "text-muted" : "text-ink/70"}`}>
           {company.sector}
         </span>
       </div>

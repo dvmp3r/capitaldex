@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { COMPANIES, COUNTRIES, SECTORS } from "../data/companies";
-import { companyIncome } from "../game/economy";
+import { COMPANIES, COUNTRIES, INDEX_MEMBERS, SECTORS } from "../data/companies";
+import { companyIncome, setProgress } from "../game/economy";
+import { fmtMult } from "../game/format";
 import { RARITY_RANK, rarityLabel, rarityOf } from "../game/rarity";
 import { RARITIES, type Rarity } from "../game/types";
 import { t } from "../i18n";
 import { useGame } from "../store/gameStore";
 import { CompanyCard } from "./CompanyCard";
-import { IndexSets } from "./IndexSets";
 
 type Sort = "cap" | "income" | "shares" | "name";
 const PAGE = 60;
@@ -18,7 +18,7 @@ export function Collection() {
   const [sector, setSector] = useState("");
   const [country, setCountry] = useState("");
   const [query, setQuery] = useState("");
-  const [onlyOwned, setOnlyOwned] = useState(false);
+  const [onlyOwned, setOnlyOwned] = useState(true); // por defecto solo las empresas en cartera
   const [sort, setSort] = useState<Sort>("cap");
   const [limit, setLimit] = useState(PAGE);
   useEffect(() => setLimit(PAGE), [rarity, index, sector, country, query, onlyOwned, sort]);
@@ -47,6 +47,8 @@ export function Collection() {
   }, [holdings, rarity, index, sector, country, query, onlyOwned, sort]);
 
   const ownedInList = list.filter((c) => holdings[c.id]).length;
+  const sets = useMemo(() => setProgress(holdings, INDEX_MEMBERS), [holdings]);
+  const activeSet = index ? sets.find((s) => s.id === index) : undefined;
   const shown = list.slice(0, limit);
 
   return (
@@ -56,12 +58,12 @@ export function Collection() {
         <span className="num text-sm text-muted">{t("collection.discovered", { owned, total: COMPANIES.length })}</span>
       </div>
 
-      <div className="mt-3">
-        <IndexSets active={index} onSelect={setIndex} />
-      </div>
-
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("collection.search")} className="control w-48" aria-label={t("collection.searchAria")} />
+        <select value={index} onChange={(e) => setIndex(e.target.value)} className="control" aria-label={t("sets.aria")}>
+          <option value="">{t("collection.anyIndex")}</option>
+          {sets.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.owned}/{s.total})</option>)}
+        </select>
         <select value={rarity} onChange={(e) => setRarity(e.target.value as Rarity | "")} className="control" aria-label={t("collection.rarityAria")}>
           <option value="">{t("collection.anyRarity")}</option>
           {[...RARITIES].reverse().map((r) => <option key={r} value={r}>{rarityLabel(r)}</option>)}
@@ -94,7 +96,10 @@ export function Collection() {
         </div>
       ) : (
         <>
-          <p className="num mt-4 text-xs text-muted">{t("collection.inView", { owned: ownedInList, total: list.length })}</p>
+          <p className="num mt-4 text-xs text-muted">
+            {t("collection.inView", { owned: ownedInList, total: list.length })}
+            {activeSet && <span className={activeSet.owned === activeSet.total ? "ml-3 text-legendaria-ink" : "ml-3"}>{t("sets.title", { name: activeSet.name, owned: activeSet.owned, total: activeSet.total, mult: fmtMult(activeSet.mult), bonus: Math.round(activeSet.bonus * 100) })}</span>}
+          </p>
           <div className="mt-2 grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
             {shown.map((c) => {
               const h = holdings[c.id];

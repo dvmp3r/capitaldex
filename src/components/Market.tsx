@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { fmtCapital } from "../game/format";
 import { rarityLabel } from "../game/rarity";
 import { playBuy } from "../game/sound";
@@ -8,7 +8,14 @@ import { requirementText, SERIES, seriesCost, seriesHeadline, seriesTargetLabel,
 import { t } from "../i18n";
 import { contextOf, useGame, useMults } from "../store/gameStore";
 
-/** Pestaña Mercado: las series de titulares por niveles y el resumen de multiplicadores. */
+type Filter = "all" | "sector" | "region" | "rarity" | "office";
+const FILTERS: Filter[] = ["all", "sector", "region", "rarity", "office"];
+const groupOf = (s: Series): Filter => (s.kind === "sector" || s.kind === "region" || s.kind === "rarity" ? s.kind : "office");
+
+type State = "buy" | "poor" | "locked" | "max";
+interface Row { s: Series; level: number; cost: number; locked: string | null; state: State }
+
+/** Pestaña Mercado: las series de titulares por niveles, filtrables por grupo, y el resumen de multiplicadores. */
 export function Market() {
   const capital = useGame((s) => s.capital);
   const holdings = useGame((s) => s.holdings);
@@ -17,6 +24,7 @@ export function Market() {
   const buyUpgrade = useGame((s) => s.buyUpgrade);
   const sound = useGame((s) => s.settings.sound);
   const mults = useMults();
+  const [filter, setFilter] = useState<Filter>("all");
   const buy = (id: string) => {
     if (buyUpgrade(id) && sound) playBuy();
   };
@@ -24,21 +32,24 @@ export function Market() {
   const ctx = useMemo(() => contextOf(holdings, pulls), [holdings, pulls]);
 
   const rows = useMemo(() => {
-    const open: { s: Series; level: number; cost: number; locked: string | null }[] = [];
-    const maxed: { s: Series; level: number }[] = [];
+    const out: Row[] = [];
     for (const s of SERIES) {
+      if (filter !== "all" && groupOf(s) !== filter) continue;
       const level = levels[s.id] ?? 0;
       if (level >= s.maxLevel) {
-        maxed.push({ s, level });
+        out.push({ s, level, cost: 0, locked: null, state: "max" });
         continue;
       }
       const next = level + 1;
-      open.push({ s, level, cost: seriesCost(s, next), locked: requirementText(s.requirement(next), ctx, rarityLabel) });
+      const cost = seriesCost(s, next);
+      const locked = requirementText(s.requirement(next), ctx, rarityLabel);
+      out.push({ s, level, cost, locked, state: locked ? "locked" : capital >= cost ? "buy" : "poor" });
     }
-    // Primero lo que se puede comprar ya, por coste; después lo bloqueado, por coste.
-    open.sort((a, b) => Number(!!a.locked) - Number(!!b.locked) || a.cost - b.cost);
-    return { open, maxed };
-  }, [levels, ctx]);
+    // Primero lo comprable (por coste), luego lo que falta capital, luego lo bloqueado; al máximo, al final.
+    const rank: Record<State, number> = { buy: 0, poor: 1, locked: 2, max: 3 };
+    out.sort((a, b) => rank[a.state] - rank[b.state] || a.cost - b.cost);
+    return out;
+  }, [levels, ctx, capital, filter]);
 
   const summary = useMemo(() => {
     const items: string[] = [];
@@ -55,75 +66,76 @@ export function Market() {
   }, [mults]);
 
   const bought = Object.values(levels).reduce((n, l) => n + l, 0);
+  const buyable = rows.filter((r) => r.state === "buy").length;
 
   return (
     <section aria-labelledby="mercado-h" className="min-w-0">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 id="mercado-h" className="text-lg font-bold">{t("market.title")}</h2>
         <span className="num text-sm text-muted">{t("market.levelsBought", { n: bought })}</span>
+        {buyable > 0 && <span className="num rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-semibold text-gold">{t("market.buyableNow", { n: buyable })}</span>}
       </div>
       <p className="mt-1 max-w-[60ch] text-sm text-muted [text-wrap:pretty]">{t("market.intro")}</p>
 
       <div className="mt-4 rounded-xl border border-line bg-surface px-4 py-3">
         <div className="text-[12px] font-semibold text-muted">{t("market.multipliers")}</div>
-        <div className="num mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          {summary.map((s) => <span key={s}>{s}</span>)}
+        <div className="num mt-2 flex flex-wrap gap-1.5 text-[12px]">
+          {summary.map((s) => <span key={s} className="rounded-full bg-surface-2 px-2.5 py-1">{s}</span>)}
         </div>
       </div>
 
-      <ul className="mt-5 divide-y divide-line">
-        {rows.open.map(({ s, level, cost, locked }) => (
-          <SeriesRow key={s.id} s={s} level={level} cost={cost} locked={locked} canAfford={capital >= cost} onBuy={() => buy(s.id)} />
+      <div role="tablist" aria-label={t("market.filters")} className="mt-4 flex flex-wrap gap-1.5">
+        {FILTERS.map((f) => (
+          <button key={f} role="tab" aria-selected={filter === f} onClick={() => setFilter(f)} className={`chip ${filter === f ? "chip-on" : ""}`}>
+            {t(`market.filter.${f}`)}
+          </button>
         ))}
-      </ul>
+      </div>
 
-      {rows.maxed.length > 0 && (
-        <details className="mt-8">
-          <summary className="cursor-pointer select-none text-base font-bold">{t("market.maxed")} <span className="num text-sm font-normal text-muted">({rows.maxed.length})</span></summary>
-          <ul className="mt-2 divide-y divide-line opacity-80">
-            {rows.maxed.map(({ s, level }) => <SeriesRow key={s.id} s={s} level={level} cost={0} locked={null} done />)}
-          </ul>
-        </details>
-      )}
+      <ul className="mt-3 grid gap-2.5 lg:grid-cols-2">
+        {rows.map((r) => <SeriesCard key={r.s.id} row={r} onBuy={() => buy(r.s.id)} />)}
+      </ul>
     </section>
   );
 }
 
-function SeriesRow({ s, level, cost, locked, canAfford, onBuy, done }: { s: Series; level: number; cost: number; locked: string | null; canAfford?: boolean; onBuy?: () => void; done?: boolean }) {
+function SeriesCard({ row, onBuy }: { row: Row; onBuy: () => void }) {
+  const { s, level, cost, locked, state } = row;
   const [headline, body] = seriesHeadline(s, level);
   const nowLabel = seriesValueLabel(s, level);
   const nextLabel = seriesValueLabel(s, Math.min(s.maxLevel, level + 1));
+  const done = state === "max";
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
-      <div className="min-w-0 flex-1 basis-60">
-        <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-muted">
-          <span>{s.category}</span>
-          <span className="num rounded-full bg-surface-2 px-2 py-0.5 text-ink">{t("market.level", { n: level, max: s.maxLevel })}</span>
-          <span className="num rounded-full bg-surface-2 px-2 py-0.5 text-ink">
-            {seriesTargetLabel(s, rarityLabel)} {nowLabel}{!done && <span className="text-up"> → {nextLabel}</span>}
-          </span>
-        </div>
-        <div className={`mt-1 font-sans text-[17px] font-bold leading-tight ${locked ? "text-muted" : ""}`} style={{ fontVariationSettings: '"opsz" 32' }}>
+    <li className="series-card flex flex-col gap-2 rounded-xl border border-line bg-surface p-3" data-state={state}>
+      <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-muted">
+        <span className="rounded-full bg-surface-2 px-2 py-0.5">{s.category}</span>
+        <span className="num rounded-full bg-surface-2 px-2 py-0.5 text-ink">{t("market.level", { n: level, max: s.maxLevel })}</span>
+        <span className="num ml-auto text-ink">
+          {seriesTargetLabel(s, rarityLabel)} {nowLabel}{!done && <span className="text-up"> → {nextLabel}</span>}
+        </span>
+      </div>
+      <div>
+        <div className={`font-sans text-[16px] font-bold leading-tight [text-wrap:balance] ${locked ? "text-muted" : ""}`} style={{ fontVariationSettings: '"opsz" 32' }}>
           {headline}
         </div>
-        <div className="mt-0.5 text-[13px] text-muted">{locked ?? body}</div>
-        {!done && (
-          <div className="meter mt-2 max-w-[220px]">
-            <i style={{ width: `${(level / s.maxLevel) * 100}%`, background: "var(--color-gold)" }} />
-          </div>
+        <div className="mt-0.5 text-[12.5px] text-muted [text-wrap:pretty]">{locked ?? body}</div>
+      </div>
+      <div className="mt-auto flex items-center gap-3">
+        <div className="meter flex-1">
+          <i style={{ width: `${(level / s.maxLevel) * 100}%`, background: done ? "var(--color-gold)" : state === "buy" ? "var(--color-gold)" : "var(--color-line-strong)" }} />
+        </div>
+        {done ? (
+          <span className="num text-xs font-semibold text-gold">{t("market.max")}</span>
+        ) : locked ? (
+          <button disabled title={locked} className="btn-primary h-9 shrink-0 px-3 text-[13px] opacity-45 grayscale">
+            {t("market.locked")} <span className="num font-semibold opacity-90">{fmtCapital(cost)}</span>
+          </button>
+        ) : (
+          <button onClick={onBuy} disabled={state !== "buy"} className="btn-primary h-9 shrink-0 px-3 text-[13px]">
+            {t("market.levelUp")} <span className="num font-semibold opacity-90">{fmtCapital(cost)}</span>
+          </button>
         )}
       </div>
-      {done ? (
-        <span className="num text-xs text-gold">{t("market.max")}</span>
-      ) : locked ? (
-        <button disabled title={locked} className="btn-primary h-10 shrink-0 px-4 text-sm opacity-45 grayscale">
-          {t("market.locked")} <span className="num font-semibold opacity-90">{fmtCapital(cost)}</span>
-        </button>
-      ) : (
-        <button onClick={onBuy} disabled={!canAfford} className="btn-primary h-10 shrink-0 px-4 text-sm">
-          {t("market.levelUp")} <span className="num font-semibold opacity-90">{fmtCapital(cost)}</span>
-        </button>
-      )}
     </li>
   );
 }

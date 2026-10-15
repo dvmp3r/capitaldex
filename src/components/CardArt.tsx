@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { hashString, mulberry32 } from "../game/hash";
-import { sectorHue } from "../game/sectors";
 
 const W = 200;
 const H = 100;
@@ -8,20 +7,20 @@ const N = 28;
 
 /**
  * Arte determinista de cada carta: una silueta de gráfico generada a partir del ticker.
- * Sin logos: cada empresa tiene una forma única y el color de su sector.
+ * Sin logos: cada empresa tiene una forma única. El color es el de la rareza (variable --frame de la carta),
+ * para que toda la carta hable del mismo color que la cápsula.
  */
-export function CardArt({ seed, sector, className = "" }: { seed: string; sector: string; className?: string }) {
-  const hue = sectorHue(sector);
+export function CardArt({ seed, className = "" }: { seed: string; className?: string }) {
   const { area, line, last } = useMemo(() => buildPaths(seed), [seed]);
   const id = `g-${seed.replace(/[^a-z0-9]/gi, "")}`;
-  const stroke = `oklch(0.78 0.16 ${hue})`;
+  const stroke = "var(--frame)";
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className={`card-art block h-full w-full ${className}`} aria-hidden="true">
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={stroke} stopOpacity="0.45" />
-          <stop offset="1" stopColor={stroke} stopOpacity="0.02" />
+          <stop offset="0" style={{ stopColor: stroke }} stopOpacity="0.45" />
+          <stop offset="1" style={{ stopColor: stroke }} stopOpacity="0.02" />
         </linearGradient>
       </defs>
       {[25, 50, 75].map((y) => (

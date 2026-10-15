@@ -41,6 +41,8 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [x] Logros con recompensas: 30 logros (carteras, rarezas, empresas, acciones, sectores, países, índices, titulares, noticias, clics, capital) con capital, carteras gratis o multiplicador permanente; pestaña Logros (15-oct-2026)
 - [x] Gestor automático: serie de titulares que abre una cartera sola cada 5 min → 32 s en el nivel 10, si hay capital (15-oct-2026)
 - [x] Pasada de "juice": oro como color del dinero, capital suavizado, números flotantes al operar, avisos de hitos, confeti en legendarias, halo en cartas nuevas, fondo con luz (15-oct-2026)
+- [x] Carta del color de su rareza (el gráfico ya no usa el color del sector, que confundía con el tier); revelado con ceremonia creciente por rareza: halo, chispas, rayos giratorios y subida distinta para épicas y legendarias (15-oct-2026)
+- [x] Logros con progreso visible (anillo, barra, "siguiente objetivo") y Mercado en tarjetas con filtros por grupo; índices como filtro desplegable de la colección; "Solo mías" activo por defecto (15-oct-2026)
 - [x] Operar con órdenes limitadas (10, una cada 10 s, 3 s de ingresos por orden): el juego manual ya no genera capital ilimitado (15-oct-2026)
 - [ ] Reequilibrar costes de titulares con datos de juego reales (ahora son fijos, pensados para la curva de las primeras 200 carteras)
 - [x] Tutorial de 3 tiradas gratis: pistas contextuales en las primeras carteras (15-oct-2026)
