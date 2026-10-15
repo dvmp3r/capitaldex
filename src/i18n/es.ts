@@ -143,7 +143,13 @@ export const es = {
   tabs: {
     collection: "Colección",
     market: "Mercado",
+    achievements: "Logros",
     ranking: "Ranking",
+  },
+  achievements: {
+    title: "Logros",
+    intro: "Cada logro se cobra una sola vez: capital, carteras gratis o un multiplicador permanente a todos tus ingresos.",
+    count: "{n} de {total}",
   },
   account: {
     enter: "Cuenta",
@@ -187,6 +193,7 @@ export const es = {
     clickSeconds: "Operar = {n} s de ingresos",
     offline: "Offline {rate} % hasta {hours} h",
     gacha: "Carteras −{pct} %",
+    autoPull: "Cartera automática cada {n} s",
     newsFreq: "Noticias ×{n}",
   },
   news: {

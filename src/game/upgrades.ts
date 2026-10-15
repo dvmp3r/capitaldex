@@ -17,7 +17,8 @@ export type UpgradeEffect =
   | { kind: "offlineRate"; set: number }
   | { kind: "offlineCapHours"; set: number }
   | { kind: "newsFrequency"; mult: number }
-  | { kind: "newsDuration"; mult: number };
+  | { kind: "newsDuration"; mult: number }
+  | { kind: "autoPull"; seconds: number };
 
 export type SeriesKind = UpgradeEffect["kind"];
 
@@ -66,6 +67,8 @@ export interface Multipliers {
   offlineCapSeconds: number;
   newsFrequency: number;
   newsDuration: number;
+  /** Segundos entre carteras automáticas; 0 = sin gestor. */
+  autoPullSeconds: number;
 }
 
 export interface Boost {
@@ -309,6 +312,16 @@ function build(): Series[] {
     maxLevel: 10, baseCost: 80_000, costGrowth: 1.7,
     requirement: (level) => ({ pulls: 20 + 15 * level }),
   });
+  out.push({
+    id: "autoPull", category: "Gestor automático", kind: "autoPull",
+    headlines: [
+      ["Contratas a un becario", "Abre una cartera por ti cada cinco minutos (si hay capital)."],
+      ["Un gestor con experiencia", "Cada nivel acorta el tiempo entre carteras automáticas."],
+      ["Mesa de gestores en tres turnos", "Las carteras se abren casi solas."],
+    ],
+    maxLevel: 10, baseCost: 25_000, costGrowth: 1.9,
+    requirement: (level) => ({ pulls: 30 + 20 * level }),
+  });
   return out;
 }
 
@@ -337,6 +350,8 @@ export function seriesValue(s: Series, level: number): number {
       return Math.min(1, OFFLINE_RATE + 0.05 * level);
     case "offlineCapHours":
       return OFFLINE_CAP_SECONDS / 3600 + 1.6 * level; // 8 h → 24 h
+    case "autoPull":
+      return level <= 0 ? 0 : Math.round(300 * Math.pow(0.78, level - 1)); // 300 s → 32 s en el nivel 10
   }
 }
 
@@ -348,6 +363,7 @@ export function seriesValueLabel(s: Series, level: number): string {
     case "clickSeconds": return `+${Math.round(v)} s`;
     case "offlineRate": return `${Math.round(v * 100)} %`;
     case "offlineCapHours": return `${Math.round(v)} h`;
+    case "autoPull": return v ? `cada ${v} s` : "no";
     default: return `×${v.toFixed(2)}`;
   }
 }
@@ -364,6 +380,7 @@ export function seriesTargetLabel(s: Series, rarityLabel: (r: Rarity) => string)
     case "offlineCapHours": return "Offline";
     case "newsFrequency": return "Noticias";
     case "newsDuration": return "Duración";
+    case "autoPull": return "Cartera automática";
   }
 }
 
@@ -400,6 +417,7 @@ export function baseMultipliers(): Multipliers {
     offlineCapSeconds: OFFLINE_CAP_SECONDS,
     newsFrequency: 1,
     newsDuration: 1,
+    autoPullSeconds: 0,
   };
 }
 
@@ -417,6 +435,7 @@ function applySeries(m: Multipliers, s: Series, level: number) {
     case "offlineCapHours": m.offlineCapSeconds = Math.max(m.offlineCapSeconds, v * 3600); break;
     case "newsFrequency": m.newsFrequency *= v; break;
     case "newsDuration": m.newsDuration *= v; break;
+    case "autoPull": m.autoPullSeconds = v; break;
   }
 }
 
@@ -431,8 +450,9 @@ function applyBoost(m: Multipliers, e: UpgradeEffect) {
 }
 
 /** Multiplicadores vigentes: niveles comprados más noticias activas en `now`. */
-export function computeMultipliers(levels: UpgradeLevels, boosts: Boost[] = [], now = Date.now()): Multipliers {
+export function computeMultipliers(levels: UpgradeLevels, boosts: Boost[] = [], now = Date.now(), extraGlobal = 1): Multipliers {
   const m = baseMultipliers();
+  m.global *= extraGlobal;
   for (const [id, level] of Object.entries(levels)) {
     const s = SERIES_BY_ID.get(id);
     if (s) applySeries(m, s, Math.min(level, s.maxLevel));
@@ -454,6 +474,7 @@ export function effectLabel(e: UpgradeEffect, rarityLabel: (r: Rarity) => string
     case "offlineCapHours": return `Offline hasta ${e.set} h`;
     case "newsFrequency": return `Noticias ×${e.mult}`;
     case "newsDuration": return `Duración ×${e.mult}`;
+    case "autoPull": return `Cartera automática cada ${e.seconds} s`;
   }
 }
 

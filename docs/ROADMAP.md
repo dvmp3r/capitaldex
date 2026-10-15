@@ -37,7 +37,8 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [x] Sonidos por acción y rareza: clic de Operar, caja registradora al comprar titular, alerta y acierto de noticia, arpegio de hito, fanfarria legendaria (15-oct-2026)
 - [ ] Añadir Nikkei 225 e Ibovespa (Wikipedia no tiene tabla de componentes; buscar otra fuente)
 - [ ] Validar partidas en el servidor para que el ranking no se pueda inflar desde el navegador
-- [ ] Logros con recompensas
+- [x] Logros con recompensas: 30 logros (carteras, rarezas, empresas, acciones, sectores, países, índices, titulares, noticias, clics, capital) con capital, carteras gratis o multiplicador permanente; pestaña Logros (15-oct-2026)
+- [x] Gestor automático: serie de titulares que abre una cartera sola cada 5 min → 32 s en el nivel 10, si hay capital (15-oct-2026)
 - [x] Pasada de "juice": oro como color del dinero, capital suavizado, números flotantes al operar, avisos de hitos, confeti en legendarias, halo en cartas nuevas, fondo con luz (15-oct-2026)
 - [ ] Reequilibrar costes de titulares con datos de juego reales (ahora son fijos, pensados para la curva de las primeras 200 carteras)
 - [x] Tutorial de 3 tiradas gratis: pistas contextuales en las primeras carteras (15-oct-2026)

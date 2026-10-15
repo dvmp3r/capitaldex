@@ -47,6 +47,8 @@ export interface Stats {
   bestRarityRank: number; // -1 = ninguna tirada todavía
   playSeconds: number;
   startedAt: number;
+  /** Noticias aprovechadas (desde el guardado v4) */
+  newsTaken?: number;
 }
 
 /** Impulso temporal de una noticia de última hora. */
@@ -71,6 +73,8 @@ export interface SaveData {
   upgrades?: string[] | Record<string, number>;
   boosts?: ActiveBoost[];
   freePulls?: number;
+  /** Desde la versión 4 */
+  achievements?: string[];
 }
 
 export interface SetProgress {

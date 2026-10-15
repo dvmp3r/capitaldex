@@ -4,13 +4,15 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { BY_ID, INDEX_MEMBERS, POOL } from "../data/companies";
 import { OFFLINE_MIN_SECONDS, SAVE_VERSION, SHARE_MILESTONES } from "../game/balance";
 import { clickValue, offlineEarnings, totalIncome, type IncomeBreakdown } from "../game/economy";
+import { ACHIEVEMENT_BY_ID, achievementsMult, newlyUnlocked, rewardLabel, type AchievementContext } from "../game/achievements";
 import { INITIAL_GACHA, pullCost, rollPull } from "../game/gacha";
 import { NEWS_OFFER_SEC, pickNews, scheduleNext, type NewsItem } from "../game/news";
 import { RARITY_RANK, rarityOf } from "../game/rarity";
 import { regionOf } from "../game/regions";
 import { parseSave, serializeSave, type ParseResult } from "../game/save";
 import type { ActiveBoost, GachaState, Holdings, PullResult, Rarity, SaveData, Stats } from "../game/types";
-import { computeMultipliers, migrateLegacyUpgrades, requirementMet, seriesCost, seriesHeadline, SERIES_BY_ID, type Multipliers, type PlayerContext, type UpgradeLevels } from "../game/upgrades";
+import { computeMultipliers, migrateLegacyUpgrades, requirementMet, SERIES, seriesCost, seriesHeadline, SERIES_BY_ID, type Multipliers, type PlayerContext, type UpgradeLevels } from "../game/upgrades";
+import { setProgress } from "../game/economy";
 
 export type { Stats } from "../game/types";
 
@@ -49,8 +51,14 @@ export interface GameState {
   upgrades: UpgradeLevels;
   /** Impulsos temporales activos */
   boosts: ActiveBoost[];
-  /** Carteras gratis pendientes (regalos de noticias) */
+  /** Carteras gratis pendientes (regalos de noticias y logros) */
   freePulls: number;
+  /** Logros desbloqueados */
+  achievements: string[];
+  /** Contador de carteras abiertas en esta sesión (manuales y automáticas): relanza la animación. */
+  pullSeq: number;
+  /** Momento de la última cartera automática */
+  lastAutoPull: number;
   /** Noticias: oferta en pantalla y momento de la siguiente */
   news: { offer: NewsOffer | null; nextAt: number };
   /** Transitorio (no se guarda) */
@@ -65,6 +73,7 @@ export interface GameState {
   work: () => void;
   buyUpgrade: (id: string) => boolean;
   acceptNews: () => void;
+  checkAchievements: () => void;
   dismissNews: () => void;
   dismissOffline: () => void;
   clearLastPull: () => void;
@@ -83,10 +92,13 @@ function initialState(now = Date.now()) {
     holdings: {} as Holdings,
     gacha: INITIAL_GACHA,
     lastTick: now,
-    stats: { clicks: 0, bestRarityRank: -1, playSeconds: 0, startedAt: now },
+    stats: { clicks: 0, bestRarityRank: -1, playSeconds: 0, startedAt: now, newsTaken: 0 },
     upgrades: {} as UpgradeLevels,
     boosts: [] as ActiveBoost[],
     freePulls: 0,
+    achievements: [] as string[],
+    pullSeq: 0,
+    lastAutoPull: 0,
     news: { offer: null as NewsOffer | null, nextAt: 0 },
     lastPull: null,
     offline: null,
@@ -110,8 +122,8 @@ export function normalizeLevels(raw: unknown): UpgradeLevels {
 }
 
 /** Multiplicadores vigentes de una partida. */
-export function multsOf(upgrades: UpgradeLevels, boosts: ActiveBoost[], now = Date.now()): Multipliers {
-  return computeMultipliers(upgrades, boosts, now);
+export function multsOf(upgrades: UpgradeLevels, boosts: ActiveBoost[], now = Date.now(), achievements: string[] = []): Multipliers {
+  return computeMultipliers(upgrades, boosts, now, achievementsMult(achievements));
 }
 
 export function incomeOf(holdings: Holdings, mults: Multipliers): IncomeBreakdown {
@@ -138,6 +150,32 @@ export function contextOf(holdings: Holdings, pulls: number): PlayerContext {
 /** Avisa a la nube (si hay sesión) poco después de un cambio importante; se registra desde cloudStore. */
 export const cloudHooks: { onChange?: () => void } = {};
 
+/** Resumen de la partida para evaluar logros. */
+export function achievementContextOf(s: Pick<GameState, "holdings" | "gacha" | "totalEarned" | "stats" | "upgrades">): AchievementContext {
+  const base = contextOf(s.holdings, s.gacha.pulls);
+  let maxShares = 0;
+  const countries = new Set<string>();
+  for (const [id, h] of Object.entries(s.holdings)) {
+    maxShares = Math.max(maxShares, h.shares);
+    const c = BY_ID.get(id);
+    if (c) countries.add(c.countryCode);
+  }
+  return {
+    pulls: s.gacha.pulls,
+    companies: base.companies,
+    totalEarned: s.totalEarned,
+    clicks: s.stats.clicks,
+    newsTaken: s.stats.newsTaken ?? 0,
+    maxShares,
+    sectors: Object.keys(base.bySector).length,
+    countries: countries.size,
+    setsCompleted: setProgress(s.holdings, INDEX_MEMBERS).filter((p) => p.total > 0 && p.owned === p.total).length,
+    upgradeLevels: Object.values(s.upgrades).reduce((n, l) => n + l, 0),
+    maxedSeries: SERIES.filter((sr) => (s.upgrades[sr.id] ?? 0) >= sr.maxLevel).length,
+    byRarity: base.byRarity,
+  };
+}
+
 export const useGame = create<GameState>()(
   persist(
     (set, get) => ({
@@ -152,7 +190,7 @@ export const useGame = create<GameState>()(
         const s = get();
         const dt = (now - s.lastTick) / 1000;
         if (dt <= 0) return;
-        const mults = multsOf(s.upgrades, s.boosts, now);
+        const mults = multsOf(s.upgrades, s.boosts, now, s.achievements);
         const income = incomeOf(s.holdings, mults).total;
 
         if (dt >= OFFLINE_MIN_SECONDS) {
@@ -187,11 +225,18 @@ export const useGame = create<GameState>()(
           else patch.news = { offer: { item: pickNews(Math.random), expiresAt: now + NEWS_OFFER_SEC * 1000 }, nextAt: 0 };
         }
         set(patch);
+        if (Math.floor(now / 5000) !== Math.floor(s.lastTick / 5000)) get().checkAchievements();
+        // Gestor automático: abre una cartera sola cada cierto tiempo, si hay capital.
+        if (mults.autoPullSeconds > 0 && now - s.lastAutoPull >= mults.autoPullSeconds * 1000) {
+          set({ lastAutoPull: now });
+          const cost = get().freePulls > 0 ? 0 : pullCost(get().gacha.pulls, mults.gachaCost);
+          if (get().capital >= cost) get().openPack();
+        }
       },
 
       openPack: () => {
         const s = get();
-        const mults = multsOf(s.upgrades, s.boosts);
+        const mults = multsOf(s.upgrades, s.boosts, Date.now(), s.achievements);
         const free = s.freePulls > 0;
         const cost = free ? 0 : pullCost(s.gacha.pulls, mults.gachaCost);
         if (s.capital < cost) return null;
@@ -210,17 +255,20 @@ export const useGame = create<GameState>()(
           gacha: roll.next,
           freePulls: free ? s.freePulls - 1 : s.freePulls,
           lastPull: result,
+          pullSeq: s.pullSeq + 1,
           stats: { ...s.stats, bestRarityRank: Math.max(s.stats.bestRarityRank, RARITY_RANK[roll.rarity]) },
         });
         cloudHooks.onChange?.();
+        get().checkAchievements();
         return result;
       },
 
       work: () => {
         const s = get();
-        const mults = multsOf(s.upgrades, s.boosts);
+        const mults = multsOf(s.upgrades, s.boosts, Date.now(), s.achievements);
         const gain = clickValue(incomeOf(s.holdings, mults).total, mults.clickSeconds);
         set({ capital: s.capital + gain, totalEarned: s.totalEarned + gain, stats: { ...s.stats, clicks: s.stats.clicks + 1 } });
+        if (s.stats.clicks % 25 === 24) get().checkAchievements();
       },
 
       buyUpgrade: (id) => {
@@ -239,6 +287,7 @@ export const useGame = create<GameState>()(
           toasts: [...s.toasts.slice(-3), { id: ++toastSeq, text: `${headline} · nivel ${level}`, kind: "gold" }],
         });
         cloudHooks.onChange?.();
+        get().checkAchievements();
         return true;
       },
 
@@ -247,7 +296,7 @@ export const useGame = create<GameState>()(
         const offer = s.news.offer;
         if (!offer) return;
         const now = Date.now();
-        const mults = multsOf(s.upgrades, s.boosts, now);
+        const mults = multsOf(s.upgrades, s.boosts, now, s.achievements);
         const item = offer.item;
         const patch: Partial<GameState> = { news: { offer: null, nextAt: scheduleNext(now, Math.random, mults.newsFrequency) } };
         if (item.kind === "boost") {
@@ -261,13 +310,37 @@ export const useGame = create<GameState>()(
           patch.freePulls = s.freePulls + 1;
         }
         patch.toasts = [...s.toasts.slice(-3), { id: ++toastSeq, text: item.headline, kind: "up" }];
+        patch.stats = { ...s.stats, newsTaken: (s.stats.newsTaken ?? 0) + 1 };
         set(patch);
+        get().checkAchievements();
       },
 
       dismissNews: () => {
         const s = get();
         if (!s.news.offer) return;
-        set({ news: { offer: null, nextAt: scheduleNext(Date.now(), Math.random, multsOf(s.upgrades, s.boosts).newsFrequency) } });
+        set({ news: { offer: null, nextAt: scheduleNext(Date.now(), Math.random, multsOf(s.upgrades, s.boosts, Date.now(), s.achievements).newsFrequency) } });
+      },
+
+      checkAchievements: () => {
+        const s = get();
+        const fresh = newlyUnlocked(achievementContextOf(s), s.achievements);
+        if (!fresh.length) return;
+        const mults = multsOf(s.upgrades, s.boosts, Date.now(), s.achievements);
+        const income = incomeOf(s.holdings, mults).total;
+        let capital = s.capital;
+        let totalEarned = s.totalEarned;
+        let freePulls = s.freePulls;
+        const toasts = [...s.toasts.slice(-2)];
+        for (const a of fresh) {
+          if (a.reward.kind === "capital") {
+            const gain = Math.max(100, income * a.reward.minutes * 60);
+            capital += gain;
+            totalEarned += gain;
+          } else if (a.reward.kind === "freePulls") freePulls += a.reward.n;
+          toasts.push({ id: ++toastSeq, text: `Logro: ${a.title} · ${rewardLabel(a.reward)}`, kind: "gold" });
+        }
+        set({ capital, totalEarned, freePulls, toasts, achievements: [...s.achievements, ...fresh.map((a) => a.id)] });
+        cloudHooks.onChange?.();
       },
 
       dismissOffline: () => set({ offline: null }),
@@ -289,6 +362,7 @@ export const useGame = create<GameState>()(
           upgrades: s.upgrades,
           boosts: s.boosts,
           freePulls: s.freePulls,
+          achievements: s.achievements,
         };
         return serializeSave(data);
       },
@@ -309,6 +383,7 @@ export const useGame = create<GameState>()(
           upgrades: normalizeLevels(r.data.upgrades),
           boosts: r.data.boosts ?? [],
           freePulls: r.data.freePulls ?? 0,
+          achievements: (r.data.achievements ?? []).filter((id) => ACHIEVEMENT_BY_ID.has(id)),
           news: { offer: null, nextAt: 0 },
           lastPull: null,
           offline: null,
@@ -332,6 +407,7 @@ export const useGame = create<GameState>()(
         upgrades: s.upgrades,
         boosts: s.boosts,
         freePulls: s.freePulls,
+        achievements: s.achievements,
         news: s.news,
       }),
       merge: (persisted, current) => {
@@ -343,6 +419,7 @@ export const useGame = create<GameState>()(
           upgrades: normalizeLevels(p.upgrades as unknown),
           boosts: p.boosts ?? [],
           freePulls: p.freePulls ?? 0,
+          achievements: p.achievements ?? [],
           news: p.news ?? { offer: null, nextAt: 0 },
         };
       },
@@ -350,7 +427,8 @@ export const useGame = create<GameState>()(
         // Punto único para migrar guardados antiguos cuando cambie SAVE_VERSION.
         const p = (persisted ?? {}) as Partial<GameState>;
         if (version < 2) return { ...p, upgrades: {}, boosts: [], freePulls: 0, news: { offer: null, nextAt: 0 } } as GameState;
-        if (version < 3) return { ...p, upgrades: normalizeLevels(p.upgrades as unknown) } as GameState;
+        if (version < 3) return { ...p, upgrades: normalizeLevels(p.upgrades as unknown), achievements: [] } as GameState;
+        if (version < 4) return { ...p, achievements: [] } as GameState;
         return p as GameState;
       },
       onRehydrateStorage: () => (state) => {
@@ -365,7 +443,8 @@ export const useGame = create<GameState>()(
 export function useMults(): Multipliers {
   const upgrades = useGame((s) => s.upgrades);
   const boosts = useGame((s) => s.boosts);
-  return useMemo(() => multsOf(upgrades, boosts), [upgrades, boosts]);
+  const achievements = useGame((s) => s.achievements);
+  return useMemo(() => multsOf(upgrades, boosts, Date.now(), achievements), [upgrades, boosts, achievements]);
 }
 
 /** Ingresos actuales, memorizados por referencia de holdings y multiplicadores. */

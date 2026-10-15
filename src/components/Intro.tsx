@@ -23,7 +23,8 @@ export function Intro() {
   const openPack = useGame((s) => s.openPack);
   const freePulls = useGame((s) => s.freePulls);
   const mults = useMults();
-  const [revealKey, setRevealKey] = useState(0);
+  const revealKey = useGame((s) => s.pullSeq);
+  const [startSeq] = useState(() => useGame.getState().pullSeq);
   const [phase, setPhase] = useState<StagePhase>("idle");
   const [closing, setClosing] = useState(false);
 
@@ -33,11 +34,11 @@ export function Intro() {
   const cost = freeLeft > 0 ? 0 : pullCost(gacha.pulls, mults.gachaCost);
   const canAfford = capital >= cost;
   const busy = phase === "turning" || phase === "dropping" || phase === "opening";
-  const pulledHere = revealKey; // tiradas hechas dentro de la intro
+  const pulledHere = revealKey - startSeq; // tiradas hechas dentro de la intro
 
   const onOpen = () => {
     if (busy) return;
-    if (openPack()) setRevealKey((k) => k + 1);
+    openPack();
   };
 
   const finish = () => {

@@ -16,7 +16,7 @@ export function GachaPanel() {
   const openPack = useGame((s) => s.openPack);
   const freePulls = useGame((s) => s.freePulls);
   const mults = useMults();
-  const [revealKey, setRevealKey] = useState(0);
+  const revealKey = useGame((s) => s.pullSeq);
   const [phase, setPhase] = useState<StagePhase>("idle");
 
   const freeLeft = Math.max(0, FREE_PULLS - gacha.pulls) + freePulls;
@@ -27,7 +27,7 @@ export function GachaPanel() {
 
   const onOpen = () => {
     if (busy) return;
-    if (openPack()) setRevealKey((k) => k + 1);
+    openPack();
   };
 
   return (

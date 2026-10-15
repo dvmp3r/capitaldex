@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Achievements } from "./components/Achievements";
 import { Collection } from "./components/Collection";
 import { GachaPanel } from "./components/GachaPanel";
 import { Header } from "./components/Header";
@@ -12,7 +13,7 @@ import { TICK_MS } from "./game/balance";
 import { t } from "./i18n";
 import { useGame } from "./store/gameStore";
 
-type Tab = "collection" | "market" | "ranking";
+type Tab = "collection" | "market" | "achievements" | "ranking";
 
 export default function App() {
   const tick = useGame((s) => s.tick);
@@ -55,9 +56,10 @@ export default function App() {
           <div className="mb-4 flex gap-1 border-b border-line pb-3" role="tablist">
             <button role="tab" aria-selected={tab === "collection"} className={tabCls(tab === "collection")} onClick={() => setTab("collection")}>{t("tabs.collection")}</button>
             <button role="tab" aria-selected={tab === "market"} className={tabCls(tab === "market")} onClick={() => setTab("market")}>{t("tabs.market")}</button>
+            <button role="tab" aria-selected={tab === "achievements"} className={tabCls(tab === "achievements")} onClick={() => setTab("achievements")}>{t("tabs.achievements")}</button>
             <button role="tab" aria-selected={tab === "ranking"} className={tabCls(tab === "ranking")} onClick={() => setTab("ranking")}>{t("tabs.ranking")}</button>
           </div>
-          {tab === "collection" ? <Collection /> : tab === "market" ? <Market /> : <Ranking />}
+          {tab === "collection" ? <Collection /> : tab === "market" ? <Market /> : tab === "achievements" ? <Achievements /> : <Ranking />}
         </div>
       </main>
       <footer className="mx-auto max-w-7xl px-4 pb-10 pt-6 text-[11px] leading-relaxed text-muted [text-wrap:pretty]">

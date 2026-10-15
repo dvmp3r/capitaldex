@@ -54,6 +54,9 @@ export function parseSave(text: string): ParseResult {
     return { ok: false, error: t("save.invalidField", { field: "boosts" }) };
   }
   if (d.freePulls !== undefined && !isInt(d.freePulls)) return { ok: false, error: t("save.invalidField", { field: "freePulls" }) };
+  if (d.achievements !== undefined && !(Array.isArray(d.achievements) && d.achievements.every((a) => typeof a === "string"))) {
+    return { ok: false, error: t("save.invalidField", { field: "achievements" }) };
+  }
   return { ok: true, data: d as unknown as SaveData };
 }
 

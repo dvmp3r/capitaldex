@@ -50,6 +50,7 @@ export function Market() {
     items.push(t("market.clickSeconds", { n: Math.round(mults.clickSeconds) }));
     items.push(t("market.offline", { rate: Math.round(mults.offlineRate * 100), hours: Math.round(mults.offlineCapSeconds / 3600) }));
     if (mults.newsFrequency > 1) items.push(t("market.newsFreq", { n: mults.newsFrequency.toFixed(2) }));
+    if (mults.autoPullSeconds > 0) items.push(t("market.autoPull", { n: mults.autoPullSeconds }));
     return items;
   }, [mults]);
 
