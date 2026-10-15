@@ -135,6 +135,9 @@ export function contextOf(holdings: Holdings, pulls: number): PlayerContext {
   return { companies, pulls, bySector, byRegion, byRarity };
 }
 
+/** Avisa a la nube (si hay sesión) poco después de un cambio importante; se registra desde cloudStore. */
+export const cloudHooks: { onChange?: () => void } = {};
+
 export const useGame = create<GameState>()(
   persist(
     (set, get) => ({
@@ -209,6 +212,7 @@ export const useGame = create<GameState>()(
           lastPull: result,
           stats: { ...s.stats, bestRarityRank: Math.max(s.stats.bestRarityRank, RARITY_RANK[roll.rarity]) },
         });
+        cloudHooks.onChange?.();
         return result;
       },
 
@@ -234,6 +238,7 @@ export const useGame = create<GameState>()(
           upgrades: { ...s.upgrades, [id]: level },
           toasts: [...s.toasts.slice(-3), { id: ++toastSeq, text: `${headline} · nivel ${level}`, kind: "gold" }],
         });
+        cloudHooks.onChange?.();
         return true;
       },
 

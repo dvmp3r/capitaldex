@@ -6,12 +6,13 @@ import { Intro } from "./components/Intro";
 import { Market } from "./components/Market";
 import { NewsBanner } from "./components/NewsBanner";
 import { OfflineBanner } from "./components/OfflineBanner";
+import { Ranking } from "./components/Ranking";
 import { Toasts } from "./components/Toasts";
 import { TICK_MS } from "./game/balance";
 import { t } from "./i18n";
 import { useGame } from "./store/gameStore";
 
-type Tab = "collection" | "market";
+type Tab = "collection" | "market" | "ranking";
 
 export default function App() {
   const tick = useGame((s) => s.tick);
@@ -54,8 +55,9 @@ export default function App() {
           <div className="mb-4 flex gap-1 border-b border-line pb-3" role="tablist">
             <button role="tab" aria-selected={tab === "collection"} className={tabCls(tab === "collection")} onClick={() => setTab("collection")}>{t("tabs.collection")}</button>
             <button role="tab" aria-selected={tab === "market"} className={tabCls(tab === "market")} onClick={() => setTab("market")}>{t("tabs.market")}</button>
+            <button role="tab" aria-selected={tab === "ranking"} className={tabCls(tab === "ranking")} onClick={() => setTab("ranking")}>{t("tabs.ranking")}</button>
           </div>
-          {tab === "collection" ? <Collection /> : <Market />}
+          {tab === "collection" ? <Collection /> : tab === "market" ? <Market /> : <Ranking />}
         </div>
       </main>
       <footer className="mx-auto max-w-7xl px-4 pb-10 pt-6 text-[11px] leading-relaxed text-muted [text-wrap:pretty]">

@@ -38,16 +38,16 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [ ] Reequilibrar costes de titulares con datos de juego reales (ahora son fijos, pensados para la curva de las primeras 200 carteras)
 - [x] Tutorial de 3 tiradas gratis: pistas contextuales en las primeras carteras (15-oct-2026)
 - [x] Pantalla de estadísticas (tiradas, tiempo jugado, mejor tirada) (15-oct-2026)
-- [ ] Despliegue en Cloudflare Pages con dominio provisional
+- [x] Despliegue en GitHub Pages con el dominio kaminarishop.store, automático en cada push a `main` (15-oct-2026)
 - [ ] Pruebas con 20 personas durante 2 semanas; encuesta corta
 
 **Criterio de éxito:** la mitad de los probadores vuelve al séptimo día.
 
 ## Fase 2 — Online (6 semanas)
 
-- [ ] Supabase: cuentas (correo y Google), guardado en nube, perfil público
+- [x] Supabase: cuentas con usuario y contraseña, guardado en la nube (fusión: gana la partida con más capital generado), esquema en `supabase/schema.sql` (15-oct-2026)
 - [ ] Tarea diaria en servidor que descarga cierres y calcula el factor de mercado
-- [ ] Ranking mundial validado en servidor
+- [x] Ranking mundial por capital generado (vista pública `leaderboard`) (15-oct-2026). Pendiente: validación en servidor contra trampas
 - [ ] Ligas semanales por divisiones
 - [ ] Prestigio: fusiones y holdings
 - [ ] Sets por sector y país

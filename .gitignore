@@ -8,3 +8,4 @@ __pycache__/
 data/raw/*.json
 !data/raw/.gitkeep
 tsconfig.tsbuildinfo
+.env.local

@@ -6,6 +6,7 @@ import { rarityLabel } from "../game/rarity";
 import { effectLabel } from "../game/upgrades";
 import { t } from "../i18n";
 import { useGame, useIncome, useMults } from "../store/gameStore";
+import { Account } from "./Account";
 import { SaveMenu } from "./SaveMenu";
 
 export function Header() {
@@ -72,6 +73,7 @@ export function Header() {
               <span key={f.id} className="float-num text-sm" style={{ left: `${f.x}%`, top: "-4px" }}>{f.text}</span>
             ))}
           </div>
+          <Account />
           <SaveMenu />
         </div>
       </div>
