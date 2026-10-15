@@ -44,8 +44,12 @@ export interface Particle {
   size: number;
 }
 
-/** Vitrina (caja) donde viven las cápsulas; `dome` es su esfera envolvente, para la ilustración 2D de respaldo. */
-const CHAMBER = { min: { x: -0.66, y: 1.92, z: -0.42 }, max: { x: 0.66, y: 3.02, z: 0.42 } };
+/**
+ * Vitrina cilíndrica donde viven las cápsulas: radio y alturas. `min`/`max` es su caja envolvente
+ * (la usan las pruebas) y `dome` su esfera envolvente, para la ilustración 2D de respaldo.
+ */
+const CHAMBER_R = 0.66;
+const CHAMBER = { radius: CHAMBER_R, min: { x: -CHAMBER_R, y: 1.92, z: -CHAMBER_R }, max: { x: CHAMBER_R, y: 3.07, z: CHAMBER_R } };
 export const GEOM = {
   chamber: CHAMBER,
   dome: {
@@ -64,7 +68,7 @@ export const GEOM = {
 };
 
 const GRAVITY = 9;
-const CAP_COUNT = 44;
+const CAP_COUNT = 36;
 /** Paso fijo de la física de la vitrina y pasadas de proyección por paso. */
 const H = 1 / 120;
 const ITERATIONS = 4;
@@ -108,17 +112,15 @@ export class GachaSim {
   }
 
   private seedCapsules() {
-    const { min, max } = GEOM.chamber;
+    const { min } = GEOM.chamber;
     const r = GEOM.capR;
     this.caps = [];
     // Caen desordenadas desde distintas alturas y se asientan solas: pila natural, no una rejilla.
     for (let i = 0; i < CAP_COUNT; i++) {
+      const a = this.rng() * Math.PI * 2;
+      const d = Math.sqrt(this.rng()) * (GEOM.chamber.radius - r - 0.01);
       this.caps.push({
-        p: v3(
-          min.x + r + this.rng() * (max.x - min.x - 2 * r),
-          min.y + r + 0.05 + i * 0.045 + this.rng() * 0.04,
-          min.z + r + this.rng() * (max.z - min.z - 2 * r),
-        ),
+        p: v3(Math.cos(a) * d, min.y + r + 0.05 + i * 0.05 + this.rng() * 0.04, Math.sin(a) * d),
         v: v3(),
         rot: v3(this.rng() * 6, this.rng() * 6, this.rng() * 6),
         rarity: DOME_MIX[i % DOME_MIX.length],
@@ -388,14 +390,13 @@ export class GachaSim {
           contact[j] = 1;
         }
       }
+      const limit = GEOM.chamber.radius - r;
       for (let i = 0; i < n; i++) {
         const b = caps[i];
-        if (b.p.x < min.x + r) { b.p.x = min.x + r; contact[i] = 1; }
-        else if (b.p.x > max.x - r) { b.p.x = max.x - r; contact[i] = 1; }
+        const d = Math.hypot(b.p.x, b.p.z);
+        if (d > limit) { b.p.x *= limit / d; b.p.z *= limit / d; contact[i] = 1; }
         if (b.p.y < min.y + r) { b.p.y = min.y + r; contact[i] = 1; }
         else if (b.p.y > max.y - r) { b.p.y = max.y - r; contact[i] = 1; }
-        if (b.p.z < min.z + r) { b.p.z = min.z + r; contact[i] = 1; }
-        else if (b.p.z > max.z - r) { b.p.z = max.z - r; contact[i] = 1; }
       }
     }
 

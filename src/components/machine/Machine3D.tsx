@@ -48,11 +48,15 @@ function makeTextTexture(text: string, w: number, h: number, ink: string, bg: st
 }
 
 /** La marca tal cual aparece en la cabecera: icono de cápsula + "Capital" en blanco + "Dex" en oro. */
-function makeWordmarkTexture(): THREE.CanvasTexture {
+function makeWordmarkTexture(bg: string | null): THREE.CanvasTexture {
   const cv = document.createElement("canvas");
   cv.width = 512;
-  cv.height = 80;
+  cv.height = 96;
   const g = cv.getContext("2d")!;
+  if (bg) {
+    g.fillStyle = bg;
+    g.fillRect(0, 0, 512, 96);
+  }
   g.font = '800 54px "Bricolage Grotesque", "Segoe UI", sans-serif';
   g.textBaseline = "middle";
   const wCapital = g.measureText("Capital").width;
@@ -61,10 +65,9 @@ function makeWordmarkTexture(): THREE.CanvasTexture {
   const gap = 14;
   const total = icon + gap + wCapital + wDex;
   let x = (512 - total) / 2;
-  // Icono: cuadrado oscuro redondeado, cápsula dorada y línea verde que la cruza hacia arriba
   const s = icon / 64;
   g.save();
-  g.translate(x, (80 - icon) / 2);
+  g.translate(x, (96 - icon) / 2);
   g.scale(s, s);
   g.fillStyle = "#141416";
   g.beginPath();
@@ -100,17 +103,18 @@ function makeWordmarkTexture(): THREE.CanvasTexture {
   x += icon + gap;
   g.textAlign = "left";
   g.fillStyle = "#f2f2f2";
-  g.fillText("Capital", x, 42);
+  g.fillText("Capital", x, 50);
   g.fillStyle = GOLD;
-  g.fillText("Dex", x + wCapital, 42);
+  g.fillText("Dex", x + wCapital, 50);
   const tex = new THREE.CanvasTexture(cv);
   tex.anisotropy = 4;
   return tex;
 }
 
 /**
- * Máquina gashapon en 3D estilizado, a juego con la web: cuerpo de grafito, detalles dorados y vitrina
- * de cristal con las cápsulas del color de cada rareza. Geometría acorde a GEOM de sim.ts.
+ * Máquina de bolas en 3D estilizado, a juego con la web: silueta clásica (pedestal cónico, cuello,
+ * vitrina cilíndrica de cristal y tapa redonda) en grafito con detalles dorados. Las cápsulas llevan
+ * el color de cada rareza. Geometría acorde a GEOM de sim.ts (vitrina cilíndrica).
  * Sombras reales de una sola luz y materiales PBR con un entorno muy tenue. En reposo dibuja a 24 fps
  * (balanceo lento); con la pestaña oculta la simulación sigue por intervalo para que las fases terminen.
  */
@@ -154,8 +158,8 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     scene.environmentIntensity = 0.35;
     pmrem.dispose();
     const camera = new THREE.PerspectiveCamera(26, 5 / 7, 0.1, 30);
-    const camBase = new THREE.Vector3(0.8, 2.35, 8.8);
-    const lookAt = new THREE.Vector3(0, 1.68, 0);
+    const camBase = new THREE.Vector3(0.8, 2.3, 8.6);
+    const lookAt = new THREE.Vector3(0, 1.7, 0);
     camera.position.copy(camBase);
     camera.lookAt(lookAt);
 
@@ -164,7 +168,7 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     const rimLight = new THREE.DirectionalLight(0xffe2a8, 1.1);
     rimLight.position.set(-2, 5, -6);
     scene.add(rimLight);
-    const { min: cm, max: cM } = GEOM.chamber;
+    const { min: cm, max: cM, radius: R } = GEOM.chamber;
     // Luz interior de la vitrina: las bolas se iluminan desde arriba como en un escaparate
     const showcase = new THREE.PointLight(0xfff4dc, 1.5, 2.8, 1.6);
     showcase.position.set(0, cM.y - 0.05, 0);
@@ -194,25 +198,44 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     const gold = new THREE.MeshStandardMaterial({ color: 0xd9a52a, roughness: 0.34, metalness: 0.82, emissive: 0x2a1d05 });
     const gunmetal = new THREE.MeshStandardMaterial({ color: 0x4a4c52, roughness: 0.45, metalness: 0.7 });
     const glass = new THREE.MeshPhongMaterial({ color: 0xe6efff, specular: 0xffffff, shininess: 180, transparent: true, opacity: 0.1, depthWrite: false });
-    const glassEdge = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, side: THREE.BackSide, depthWrite: false });
+    const glassInner = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.1, side: THREE.BackSide, depthWrite: false });
 
     const machine = new THREE.Group();
     scene.add(machine);
-    const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x = 0, y = 0, z = 0) => {
+    const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x = 0, y = 0, z = 0, parent: THREE.Object3D = machine) => {
       const m = new THREE.Mesh(geo, mat);
       m.position.set(x, y, z);
       m.castShadow = true;
       m.receiveShadow = true;
-      machine.add(m);
+      parent.add(m);
       return m;
     };
-    const W = 1.56; // ancho del cuerpo
-    const D = 1.1; // fondo del cuerpo
-    const FRONT = D / 2; // z de la cara delantera
+    // Pedestal cónico: radio en función de la altura
+    const R_BOT = 0.8;
+    const R_TOP = 0.64;
+    const Y0 = 0.3;
+    const H = 1.5;
+    const rAt = (y: number) => R_BOT + (R_TOP - R_BOT) * ((y - Y0) / H);
+    /** Soporte tangente al pedestal a la altura y y ángulo phi (0 = frente), `out` por fuera de la superficie. */
+    const mountAt = (y: number, phi: number, out: number) => {
+      const g = new THREE.Group();
+      g.position.set(Math.sin(phi) * (rAt(y) + out), y, Math.cos(phi) * (rAt(y) + out));
+      g.rotation.y = phi;
+      machine.add(g);
+      return g;
+    };
+    const goldRing = (y: number, radius: number, tube = 0.016, parent: THREE.Object3D = machine) => {
+      const t = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 10, 72), gold);
+      t.rotation.x = Math.PI / 2;
+      t.position.y = y;
+      t.castShadow = true;
+      parent.add(t);
+      return t;
+    };
 
-    // Pie: zócalo oscuro sobre cuatro patas
-    add(new RoundedBoxGeometry(W - 0.08, 0.18, D - 0.08, 2, 0.04), graphiteDark, 0, 0.21, 0);
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.CylinderGeometry(0.06, 0.07, 0.12, 16), dark, sx * (W / 2 - 0.18), 0.06, sz * (D / 2 - 0.18));
+    // Base redonda con aro dorado
+    add(new THREE.CylinderGeometry(0.86, 0.92, 0.18, 56), graphiteDark, 0, 0.21, 0);
+    goldRing(0.305, 0.87);
     // Bandeja delantera donde cae la cápsula: cubeta poco profunda con borde dorado
     const trayZ = 0.9;
     add(new RoundedBoxGeometry(0.8, 0.06, 0.5, 2, 0.02), graphiteDark, 0, GEOM.trayY - 0.03, trayZ);
@@ -221,47 +244,47 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     add(new RoundedBoxGeometry(0.035, 0.025, 0.5, 1, 0.01), gold, 0.4, GEOM.trayY + 0.015, trayZ);
     add(new THREE.CylinderGeometry(0.04, 0.05, 0.2, 12), dark, -0.32, 0.1, trayZ + 0.16);
     add(new THREE.CylinderGeometry(0.04, 0.05, 0.2, 12), dark, 0.32, 0.1, trayZ + 0.16);
-    // Cuerpo de grafito
-    add(new RoundedBoxGeometry(W, 1.56, D, 4, 0.09), graphite, 0, 1.08, 0);
-    // Banda dorada fina a media altura y marco entre cuerpo y vitrina
-    add(new RoundedBoxGeometry(W + 0.02, 0.035, D + 0.02, 1, 0.012), gold, 0, 0.5, 0);
-    add(new RoundedBoxGeometry(W + 0.05, 0.09, D + 0.05, 2, 0.03), graphiteDark, 0, cm.y - 0.05, 0);
-    add(new RoundedBoxGeometry(W + 0.06, 0.02, D + 0.06, 1, 0.008), gold, 0, cm.y - 0.1, 0);
-    // Vitrina de cristal
+    // Pedestal de grafito (tronco de cono) con banda dorada
+    add(new THREE.CylinderGeometry(R_TOP, R_BOT, H, 56), graphite, 0, Y0 + H / 2, 0);
+    goldRing(0.52, rAt(0.52) + 0.004);
+    // Cuello entre pedestal y vitrina
+    add(new THREE.CylinderGeometry(R + 0.04, R_TOP + 0.06, 0.12, 56), graphiteDark, 0, 1.86, 0);
+    goldRing(1.92, R + 0.03, 0.018);
+    // Vitrina cilíndrica de cristal (exterior e interior) y suelo oscuro
     const chamberH = cM.y - cm.y;
     const chamberY = (cm.y + cM.y) / 2;
-    const chamber = new THREE.Mesh(new RoundedBoxGeometry(W - 0.1, chamberH - 0.02, D - 0.1, 3, 0.07), glass);
-    chamber.position.set(0, chamberY + 0.01, 0);
+    const chamber = new THREE.Mesh(new THREE.CylinderGeometry(R, R, chamberH, 64, 1, true), glass);
+    chamber.position.set(0, chamberY, 0);
     chamber.renderOrder = 10;
     machine.add(chamber);
-    const chamberEdge = new THREE.Mesh(new RoundedBoxGeometry(W - 0.08, chamberH + 0.02, D - 0.08, 3, 0.08), glassEdge);
-    chamberEdge.position.copy(chamber.position);
-    chamberEdge.renderOrder = 9;
-    machine.add(chamberEdge);
-    // Suelo oscuro de la vitrina y postes dorados en las esquinas
-    add(new THREE.BoxGeometry(W - 0.16, 0.04, D - 0.16), dark, 0, cm.y + 0.03, 0);
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.BoxGeometry(0.04, chamberH, 0.04), gold, sx * (W / 2 - 0.05), chamberY, sz * (D / 2 - 0.05));
-    // Tapa superior con rótulo dorado y remate
-    add(new RoundedBoxGeometry(W + 0.05, 0.3, D + 0.05, 3, 0.08), graphite, 0, cM.y + 0.15, 0);
-    add(new RoundedBoxGeometry(W + 0.06, 0.02, D + 0.06, 1, 0.008), gold, 0, cM.y + 0.005, 0);
-    add(new RoundedBoxGeometry(W - 0.42, 0.21, 0.05, 2, 0.025), graphiteDark, 0, cM.y + 0.16, FRONT + 0.02); // placa del rótulo
-    const labelTex = makeWordmarkTexture();
-    const label = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.5, (W - 0.5) / 6.4), new THREE.MeshBasicMaterial({ map: labelTex, transparent: true }));
-    label.position.set(0, cM.y + 0.16, FRONT + 0.05);
+    const chamberIn = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.004, R - 0.004, chamberH, 64, 1, true), glassInner);
+    chamberIn.position.copy(chamber.position);
+    chamberIn.renderOrder = 9;
+    machine.add(chamberIn);
+    add(new THREE.CylinderGeometry(R - 0.01, R - 0.01, 0.04, 56), dark, 0, cm.y + 0.02, 0);
+    // Tapa redonda con aro, rótulo curvado de la marca y remate dorado
+    add(new THREE.CylinderGeometry(R + 0.02, R + 0.06, 0.26, 56), graphite, 0, cM.y + 0.13, 0);
+    goldRing(cM.y + 0.005, R + 0.05, 0.018);
+    const labelTex = makeWordmarkTexture(INK_DARK);
+    const label = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.075, R + 0.075, 0.17, 32, 1, true, -0.62, 1.24), new THREE.MeshBasicMaterial({ map: labelTex }));
+    label.position.y = cM.y + 0.13;
     machine.add(label);
-    add(new THREE.CylinderGeometry(0.16, 0.2, 0.08, 24), gold, 0, cM.y + 0.34, 0);
-    add(new THREE.SphereGeometry(0.07, 16, 12), gold, 0, cM.y + 0.42, 0);
+    add(new THREE.CylinderGeometry(0.14, 0.2, 0.08, 24), gold, 0, cM.y + 0.3, 0);
+    add(new THREE.SphereGeometry(0.07, 16, 12), gold, 0, cM.y + 0.38, 0);
 
-    // Placa frontal del mecanismo (gris metal) con el mando y la boca
-    const plateY = 1.08;
-    add(new RoundedBoxGeometry(0.8, 1.22, 0.05, 2, 0.03), gunmetal, 0, plateY, FRONT + 0.01);
-    add(new RoundedBoxGeometry(0.84, 1.26, 0.02, 2, 0.03), gold, 0, plateY, FRONT - 0.004); // filo dorado
-    // Etiqueta de precio
+    // Placa frontal curvada del mecanismo (gris metal con filo dorado)
+    const plateY = 1.075;
+    const plateH = 1.25;
+    const plate = add(new THREE.CylinderGeometry(rAt(plateY + plateH / 2) + 0.012, rAt(plateY - plateH / 2) + 0.012, plateH, 32, 1, true, -0.5, 1.0), gunmetal, 0, plateY, 0);
+    plate.castShadow = false;
+    const plateTrim = add(new THREE.CylinderGeometry(rAt(plateY + plateH / 2) + 0.008, rAt(plateY - plateH / 2) + 0.008, plateH + 0.04, 32, 1, true, -0.53, 1.06), gold, 0, plateY, 0);
+    plateTrim.castShadow = false;
+    // Etiqueta de precio (a la derecha de la placa)
     const tagTex = makeTextTexture("1 CARTERA", 320, 72, GOLD, INK_DARK, 34);
-    const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.09), new THREE.MeshBasicMaterial({ map: tagTex }));
-    tag.position.set(0.55, 0.76, FRONT + 0.012);
-    machine.add(tag);
-    // Cartel dentro de la vitrina (al fondo): logo y los cinco colores
+    const tagMount = mountAt(0.78, 0.78, 0.006);
+    const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.081), new THREE.MeshBasicMaterial({ map: tagTex }));
+    tagMount.add(tag);
+    // Cartel curvado dentro de la vitrina (al fondo): logo y los cinco colores
     const posterTex = (() => {
       const cv = document.createElement("canvas");
       cv.width = 512;
@@ -292,21 +315,28 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       g.fillStyle = GOLD;
       g.font = '800 44px "Bricolage Grotesque", "Segoe UI", sans-serif';
       g.fillText("¡GIRA Y COLECCIONA!", 256, 430);
-      return new THREE.CanvasTexture(cv);
+      const tex = new THREE.CanvasTexture(cv);
+      // Se ve desde dentro de la vitrina: la textura va espejada para que se lea bien.
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.repeat.x = -1;
+      tex.offset.x = 1;
+      return tex;
     })();
-    const poster = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshBasicMaterial({ map: posterTex }));
-    poster.position.set(0, chamberY + 0.06, cm.z - 0.06);
+    const poster = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.03, R - 0.03, 0.8, 32, 1, true, Math.PI - 0.72, 1.44), new THREE.MeshBasicMaterial({ map: posterTex, side: THREE.BackSide }));
+    poster.position.y = chamberY + 0.04;
     machine.add(poster);
-    // Ranura de monedas (dorada) y cerradura
-    add(new RoundedBoxGeometry(0.28, 0.13, 0.035, 2, 0.015), gold, -0.5, 1.64, FRONT + 0.012);
-    add(new THREE.BoxGeometry(0.1, 0.025, 0.03), dark, -0.5, 1.64, FRONT + 0.035);
-    const lock = add(new THREE.CylinderGeometry(0.065, 0.065, 0.04, 20), gold, 0.5, 1.64, FRONT + 0.025);
+    // Ranura de monedas (dorada) y cerradura, sobre la placa
+    const slot = mountAt(1.62, -0.3, 0.016);
+    add(new RoundedBoxGeometry(0.24, 0.12, 0.03, 2, 0.015), gold, 0, 0, 0, slot);
+    add(new THREE.BoxGeometry(0.09, 0.022, 0.03), dark, 0, 0, 0.02, slot);
+    const lockMount = mountAt(1.62, 0.3, 0.02);
+    const lock = add(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 20), gold, 0, 0, 0, lockMount);
     lock.rotation.x = Math.PI / 2;
-    add(new THREE.BoxGeometry(0.018, 0.08, 0.03), dark, 0.5, 1.64, FRONT + 0.05);
+    add(new THREE.BoxGeometry(0.016, 0.07, 0.03), dark, 0, 0, 0.025, lockMount);
 
     // Mando: plato con flechas doradas, anillo dorado, disco oscuro y asa dorada; gira sobre z
-    const knobY = 1.38;
-    const knobZ = FRONT + 0.05;
+    const knobY = 1.36;
+    const knobMount = mountAt(knobY, 0, 0.03);
     const arrowsTex = (() => {
       const cv = document.createElement("canvas");
       cv.width = cv.height = 256;
@@ -333,33 +363,35 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       }
       return new THREE.CanvasTexture(cv);
     })();
-    const arrows = new THREE.Mesh(new THREE.CircleGeometry(0.4, 40), new THREE.MeshBasicMaterial({ map: arrowsTex, transparent: true }));
-    arrows.position.set(0, knobY, FRONT + 0.04);
-    machine.add(arrows);
-    add(new THREE.TorusGeometry(0.32, 0.035, 10, 48), gold, 0, knobY, knobZ);
+    const arrows = new THREE.Mesh(new THREE.CircleGeometry(0.38, 40), new THREE.MeshBasicMaterial({ map: arrowsTex, transparent: true }));
+    arrows.position.z = 0.012;
+    knobMount.add(arrows);
+    const knobRing = add(new THREE.TorusGeometry(0.3, 0.033, 10, 48), gold, 0, 0, 0.03, knobMount);
+    knobRing.castShadow = false;
     const knob = new THREE.Group();
-    knob.position.set(0, knobY, knobZ);
-    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.08, 40), graphiteDark);
+    knob.position.z = 0.03;
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.245, 0.265, 0.08, 40), graphiteDark);
     disc.rotation.x = Math.PI / 2;
     disc.castShadow = true;
     knob.add(disc);
-    const handle = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.11, 0.08, 2, 0.035), gold);
+    const handle = new THREE.Mesh(new RoundedBoxGeometry(0.47, 0.105, 0.08, 2, 0.035), gold);
     handle.position.z = 0.075;
     handle.castShadow = true;
     knob.add(handle);
-    const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.05, 12), dark);
+    const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.033, 0.033, 0.05, 12), dark);
     pin.rotation.x = Math.PI / 2;
     pin.position.z = 0.125;
     knob.add(pin);
-    machine.add(knob);
+    knobMount.add(knob);
 
     // Boca de salida: hueco oscuro con arco, bajo el mando, con labio dorado
     const mouthY = 0.72;
-    add(new THREE.BoxGeometry(0.52, 0.42, 0.52), dark, 0, mouthY - 0.08, FRONT - 0.16);
-    const arch = add(new THREE.CylinderGeometry(0.26, 0.26, 0.54, 24, 1, false, 0, Math.PI), dark, 0, mouthY + 0.13, FRONT - 0.16);
+    const mouthZ = rAt(mouthY);
+    add(new THREE.BoxGeometry(0.5, 0.42, 0.5), dark, 0, mouthY - 0.08, mouthZ - 0.15);
+    const arch = add(new THREE.CylinderGeometry(0.25, 0.25, 0.52, 24, 1, false, 0, Math.PI), dark, 0, mouthY + 0.13, mouthZ - 0.15);
     arch.rotation.x = Math.PI / 2;
     arch.rotation.z = Math.PI / 2;
-    add(new THREE.BoxGeometry(0.56, 0.03, 0.07), gold, 0, mouthY - 0.31, FRONT + 0.07); // labio
+    add(new THREE.BoxGeometry(0.54, 0.03, 0.07), gold, 0, mouthY - 0.31, mouthZ + 0.06); // labio
 
     // Podio de exposición: disco casi negro con sombra de contacto pintada y aro dorado discreto
     const shadowTex = (() => {
@@ -376,11 +408,11 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     })();
     const podiumSide = new THREE.MeshStandardMaterial({ color: 0x121214, roughness: 0.7, metalness: 0.1 });
     const podiumTop = new THREE.MeshStandardMaterial({ map: shadowTex, roughness: 0.6, metalness: 0.15 });
-    const podium = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.5, 0.12, 64), [podiumSide, podiumTop, podiumSide]);
+    const podium = new THREE.Mesh(new THREE.CylinderGeometry(1.35, 1.45, 0.12, 64), [podiumSide, podiumTop, podiumSide]);
     podium.position.set(0, -0.06, 0.2);
     podium.receiveShadow = true;
     scene.add(podium);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.39, 0.014, 10, 96), new THREE.MeshStandardMaterial({ color: 0x9a7424, roughness: 0.4, metalness: 0.75, emissive: 0x1a1204 }));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.34, 0.014, 10, 96), new THREE.MeshStandardMaterial({ color: 0x9a7424, roughness: 0.4, metalness: 0.75, emissive: 0x1a1204 }));
     ring.rotation.x = Math.PI / 2;
     ring.position.set(0, 0.004, 0.2);
     scene.add(ring);
