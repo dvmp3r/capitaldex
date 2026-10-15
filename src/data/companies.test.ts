@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { INDEX_SETS, RARITY_THRESHOLDS_USD } from "../game/balance";
 import { rarityOf } from "../game/rarity";
-import { BY_ID, COMPANIES, INDEX_MEMBERS, POOL } from "./companies";
+import { BY_ID, COMPANIES, COUNTRIES, countryName, INDEX_MEMBERS, POOL } from "./companies";
 
 describe("datos de empresas", () => {
   it("hay un universo razonable sin duplicados", () => {
@@ -29,6 +29,13 @@ describe("datos de empresas", () => {
     for (const group of Object.values(POOL)) expect(group.length).toBeGreaterThan(0);
     for (const c of POOL.legendaria) expect(c.marketCapUsd).toBeGreaterThanOrEqual(RARITY_THRESHOLDS_USD.legendaria);
     expect(rarityOf(COMPANIES[0])).toBe("legendaria");
+  });
+
+  it("los países tienen nombre en español y cubren todas las empresas", () => {
+    expect(COUNTRIES.length).toBeGreaterThan(10);
+    expect(COUNTRIES[0].code).toBe("US");
+    expect(COUNTRIES.reduce((n, c) => n + c.count, 0)).toBe(COMPANIES.length);
+    for (const c of COUNTRIES) expect(countryName(c.code), c.code).not.toBe(c.code);
   });
 
   it("los sets de índice tienen el tamaño esperado", () => {

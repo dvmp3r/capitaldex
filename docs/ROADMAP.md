@@ -18,7 +18,7 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 ## Fase 1 — MVP de un jugador (6 semanas)
 
 - [x] Gacha con probabilidades visibles y piedad (15-oct-2026)
-- [ ] Colección con filtros (rareza, índice, sector, país) y buscador
+- [x] Colección con filtros (rareza, índice, sector, país) y buscador (15-oct-2026)
 - [x] Duplicados como acciones con hitos (15-oct-2026)
 - [x] Sets por índice con bonus (15-oct-2026)
 - [x] Botón Operar y progreso offline (15-oct-2026)

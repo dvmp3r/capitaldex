@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { COMPANIES, SECTORS } from "../data/companies";
+import { COMPANIES, COUNTRIES, SECTORS } from "../data/companies";
 import { companyIncome } from "../game/economy";
 import { RARITY_LABEL, RARITY_RANK, rarityOf } from "../game/rarity";
 import { RARITIES, type Rarity } from "../game/types";
@@ -14,6 +14,7 @@ export function Collection() {
   const [rarity, setRarity] = useState<Rarity | "">("");
   const [index, setIndex] = useState("");
   const [sector, setSector] = useState("");
+  const [country, setCountry] = useState("");
   const [query, setQuery] = useState("");
   const [onlyOwned, setOnlyOwned] = useState(false);
   const [sort, setSort] = useState<Sort>("cap");
@@ -26,6 +27,7 @@ export function Collection() {
       if (rarity && rarityOf(c) !== rarity) return false;
       if (index && !c.indices.includes(index)) return false;
       if (sector && c.sector !== sector) return false;
+      if (country && c.countryCode !== country) return false;
       if (onlyOwned && !holdings[c.id]) return false;
       if (q && !(c.id.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))) return false;
       return true;
@@ -38,7 +40,7 @@ export function Collection() {
       name: (a, b) => a.name.localeCompare(b.name, "es"),
     };
     return [...filtered].sort(sorters[sort]);
-  }, [holdings, rarity, index, sector, query, onlyOwned, sort]);
+  }, [holdings, rarity, index, sector, country, query, onlyOwned, sort]);
 
   const ownedInList = list.filter((c) => holdings[c.id]).length;
 
@@ -64,6 +66,10 @@ export function Collection() {
         <select value={sector} onChange={(e) => setSector(e.target.value)} className="control" aria-label="Sector">
           <option value="">Cualquier sector</option>
           {SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select value={country} onChange={(e) => setCountry(e.target.value)} className="control" aria-label="País">
+          <option value="">Cualquier país</option>
+          {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name} ({c.count})</option>)}
         </select>
         <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="control" aria-label="Orden">
           <option value="cap">Capitalización</option>

@@ -1,3 +1,4 @@
+import { countryName } from "../data/companies";
 import { companyIncome, nextMilestone } from "../game/economy";
 import { flag, fmt, fmtPct, fmtUsd } from "../game/format";
 import { RARITY_LABEL, rarityOf } from "../game/rarity";
@@ -44,7 +45,7 @@ export function CompanyCard({ company, shares = 0, hidden = false, size = "sm", 
             {hidden ? "Sin descubrir" : company.name}
           </div>
         </div>
-        <span className="num shrink-0 rounded-md border border-line px-1.5 py-0.5 text-[10px] font-medium text-muted" title={company.country}>
+        <span className="num shrink-0 rounded-md border border-line px-1.5 py-0.5 text-[10px] font-medium text-muted" title={countryName(company.countryCode)}>
           {flag(company.countryCode)}
         </span>
       </header>

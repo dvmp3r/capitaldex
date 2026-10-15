@@ -18,3 +18,24 @@ for (const c of COMPANIES) {
 }
 
 export const SECTORS: string[] = [...new Set(COMPANIES.map((c) => c.sector))].sort((a, b) => a.localeCompare(b, "es"));
+
+const COUNTRY_NAME_ES: Record<string, string> = {
+  US: "Estados Unidos", DE: "Alemania", ES: "España", GB: "Reino Unido", FR: "Francia", NL: "Países Bajos",
+  JP: "Japón", CH: "Suiza", CN: "China", IE: "Irlanda", SE: "Suecia", IT: "Italia", IN: "India", AU: "Australia",
+  DK: "Dinamarca", CA: "Canadá", KR: "Corea del Sur", FI: "Finlandia", HK: "Hong Kong", SA: "Arabia Saudí",
+  BE: "Bélgica", NO: "Noruega", UY: "Uruguay", LU: "Luxemburgo", TW: "Taiwán", AT: "Austria", PT: "Portugal",
+  SG: "Singapur", BR: "Brasil", MX: "México", IL: "Israel",
+};
+
+export function countryName(code: string): string {
+  return COUNTRY_NAME_ES[code] ?? code;
+}
+
+/** Países presentes en el universo, ordenados por número de empresas (desc) y nombre. */
+export const COUNTRIES: { code: string; name: string; count: number }[] = (() => {
+  const counts = new Map<string, number>();
+  for (const c of COMPANIES) counts.set(c.countryCode, (counts.get(c.countryCode) ?? 0) + 1);
+  return [...counts]
+    .map(([code, count]) => ({ code, name: countryName(code), count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "es"));
+})();
