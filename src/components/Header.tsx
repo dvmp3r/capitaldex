@@ -3,6 +3,7 @@ import { useLiveValue } from "../hooks/useTween";
 import { clickValue } from "../game/economy";
 import { fmt, fmtCapital, fmtMult } from "../game/format";
 import { rarityLabel } from "../game/rarity";
+import { playClick } from "../game/sound";
 import { effectLabel } from "../game/upgrades";
 import { t } from "../i18n";
 import { useGame, useIncome, useMults } from "../store/gameStore";
@@ -14,6 +15,7 @@ export function Header() {
   const work = useGame((s) => s.work);
   const boosts = useGame((s) => s.boosts);
   const freePulls = useGame((s) => s.freePulls);
+  const sound = useGame((s) => s.settings.sound);
   const lastTick = useGame((s) => s.lastTick);
   const income = useIncome();
   const mults = useMults();
@@ -34,6 +36,7 @@ export function Header() {
   const onWork = () => {
     const gain = clickValue(income.total, mults.clickSeconds);
     work();
+    if (sound) playClick();
     const id = ++seq.current;
     setFloats((f) => [...f.slice(-5), { id, text: `+${fmt(gain)}`, x: 30 + Math.random() * 40 }]);
     window.setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 950);

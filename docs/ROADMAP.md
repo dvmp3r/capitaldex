@@ -33,7 +33,11 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [x] Cargar la escena 3D bajo demanda (code splitting) (15-oct-2026)
 - [x] Bucle idle: titulares (mejoras permanentes por sector, región, rareza, globales, bróker, mesa y noticias) y noticias de última hora temporales (15-oct-2026)
 - [x] Universo ampliado a 1 117 empresas con los índices completos de 12 mercados; colección paginada (15-oct-2026)
+- [x] Máquina de bolas con ilustración CC0 de Openclipart (cuerpo rojo clásico) y bolas con física propia; manivela animada y cápsula de la rareza saliendo por la boca (15-oct-2026)
+- [x] Sonidos por acción y rareza: clic de Operar, caja registradora al comprar titular, alerta y acierto de noticia, arpegio de hito, fanfarria legendaria (15-oct-2026)
 - [ ] Añadir Nikkei 225 e Ibovespa (Wikipedia no tiene tabla de componentes; buscar otra fuente)
+- [ ] Validar partidas en el servidor para que el ranking no se pueda inflar desde el navegador
+- [ ] Logros con recompensas
 - [x] Pasada de "juice": oro como color del dinero, capital suavizado, números flotantes al operar, avisos de hitos, confeti en legendarias, halo en cartas nuevas, fondo con luz (15-oct-2026)
 - [ ] Reequilibrar costes de titulares con datos de juego reales (ahora son fijos, pensados para la curva de las primeras 200 carteras)
 - [x] Tutorial de 3 tiradas gratis: pistas contextuales en las primeras carteras (15-oct-2026)
@@ -56,6 +60,8 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [ ] Lanzamiento en itch.io y publicación en r/incremental_games
 
 **Criterio de éxito:** 500 registros y retención día 7 del 25 %.
+
+**Estado 15-oct-2026:** web publicada en kaminarishop.store (GitHub Pages), cuentas y ranking operativos con Supabase. Falta HTTPS obligatorio (certificado en emisión), inglés, prestigio y las pruebas con jugadores.
 
 ## Fase 3 — Mercado vivo y monetización (8 semanas)
 

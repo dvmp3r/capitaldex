@@ -83,17 +83,69 @@ export function playPop() {
   tone(ac, 420, t, 0.09, 0.09, "sine", 980);
 }
 
-/** Acorde según rareza: más notas y más largo cuanto más rara. */
+/** Acorde según rareza: más notas y más largo cuanto más rara. La legendaria es una fanfarria. */
 export function playReveal(rarity: Rarity) {
   const ac = audio();
   if (!ac) return;
   const t = ac.currentTime + 0.05;
+  if (rarity === "legendaria") {
+    // fanfarria: tres notas en escalera y acorde final sostenido
+    [392, 523, 659].forEach((f, i) => tone(ac, f, t + i * 0.12, 0.22, 0.07, "triangle"));
+    [784, 988, 1175, 1568].forEach((f, i) => tone(ac, f, t + 0.4 + i * 0.02, 1.4, 0.06, "sine"));
+    noise(ac, t + 0.4, 0.5, 0.03, 6000);
+    return;
+  }
   const chords: Record<Rarity, number[]> = {
-    comun: [],
-    poco_comun: [660],
-    rara: [660, 880],
-    epica: [587, 740, 880],
-    legendaria: [523, 659, 784, 1047, 1319],
+    comun: [523],
+    poco_comun: [523, 659],
+    rara: [523, 659, 784],
+    epica: [587, 740, 880, 1175],
+    legendaria: [],
   };
-  chords[rarity].forEach((f, i) => tone(ac, f, t + i * 0.09, rarity === "legendaria" ? 0.9 : 0.35, 0.07));
+  const dur = rarity === "epica" ? 0.8 : rarity === "rara" ? 0.5 : 0.3;
+  chords[rarity].forEach((f, i) => tone(ac, f, t + i * 0.08, dur, 0.07));
+}
+
+/** Clic de Operar: tic corto y seco. */
+export function playClick() {
+  const ac = audio();
+  if (!ac) return;
+  const t = ac.currentTime;
+  tone(ac, 1200, t, 0.04, 0.04, "square", 700);
+}
+
+/** Comprar un titular: caja registradora (campanilla + cajón). */
+export function playBuy() {
+  const ac = audio();
+  if (!ac) return;
+  const t = ac.currentTime;
+  tone(ac, 1760, t, 0.18, 0.06, "sine");
+  tone(ac, 2637, t + 0.03, 0.22, 0.05, "sine");
+  noise(ac, t + 0.12, 0.09, 0.06, 1400);
+  tone(ac, 220, t + 0.14, 0.12, 0.08, "triangle", 110);
+}
+
+/** Noticia aprovechada: tres notas ascendentes rápidas. */
+export function playNews() {
+  const ac = audio();
+  if (!ac) return;
+  const t = ac.currentTime;
+  [660, 880, 1320].forEach((f, i) => tone(ac, f, t + i * 0.07, 0.16, 0.06, "triangle"));
+}
+
+/** Noticia de última hora que aparece: dos golpes de atención. */
+export function playAlert() {
+  const ac = audio();
+  if (!ac) return;
+  const t = ac.currentTime;
+  tone(ac, 988, t, 0.1, 0.05, "square");
+  tone(ac, 988, t + 0.16, 0.1, 0.05, "square");
+}
+
+/** Hito de acciones alcanzado: arpegio corto. */
+export function playMilestone() {
+  const ac = audio();
+  if (!ac) return;
+  const t = ac.currentTime;
+  [523, 659, 784, 1047].forEach((f, i) => tone(ac, f, t + i * 0.06, 0.3, 0.06, "sine"));
 }

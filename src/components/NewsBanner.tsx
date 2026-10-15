@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { NEWS_OFFER_SEC } from "../game/news";
 import { rarityLabel } from "../game/rarity";
+import { playAlert, playNews } from "../game/sound";
 import { effectLabel } from "../game/upgrades";
 import { t } from "../i18n";
 import { useGame, useMults } from "../store/gameStore";
@@ -10,8 +11,14 @@ export function NewsBanner() {
   const offer = useGame((s) => s.news.offer);
   const accept = useGame((s) => s.acceptNews);
   const dismiss = useGame((s) => s.dismissNews);
+  const sound = useGame((s) => s.settings.sound);
   const mults = useMults();
   const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (offer && sound) playAlert();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offer?.item.id]);
 
   useEffect(() => {
     if (!offer) return;
@@ -41,7 +48,7 @@ export function NewsBanner() {
         <i style={{ width: `${(left / NEWS_OFFER_SEC) * 100}%`, background: "var(--color-up)" }} />
       </div>
       <div className="mt-3 flex gap-2">
-        <button onClick={accept} className="btn-primary h-10 flex-1 text-sm">{t("news.take")}</button>
+        <button onClick={() => { accept(); if (sound) playNews(); }} className="btn-primary h-10 flex-1 text-sm">{t("news.take")}</button>
         <button onClick={dismiss} className="btn-ghost h-10 px-3 text-sm">{t("news.dismiss")}</button>
       </div>
     </div>

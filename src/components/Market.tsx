@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { fmtCapital } from "../game/format";
 import { rarityLabel } from "../game/rarity";
+import { playBuy } from "../game/sound";
 import { REGION_NAME, REGIONS } from "../game/regions";
 import { RARITIES } from "../game/types";
 import { requirementText, SERIES, seriesCost, seriesHeadline, seriesTargetLabel, seriesValueLabel, type Series } from "../game/upgrades";
@@ -14,7 +15,11 @@ export function Market() {
   const pulls = useGame((s) => s.gacha.pulls);
   const levels = useGame((s) => s.upgrades);
   const buyUpgrade = useGame((s) => s.buyUpgrade);
+  const sound = useGame((s) => s.settings.sound);
   const mults = useMults();
+  const buy = (id: string) => {
+    if (buyUpgrade(id) && sound) playBuy();
+  };
 
   const ctx = useMemo(() => contextOf(holdings, pulls), [holdings, pulls]);
 
@@ -67,7 +72,7 @@ export function Market() {
 
       <ul className="mt-5 divide-y divide-line">
         {rows.open.map(({ s, level, cost, locked }) => (
-          <SeriesRow key={s.id} s={s} level={level} cost={cost} locked={locked} canAfford={capital >= cost} onBuy={() => buyUpgrade(s.id)} />
+          <SeriesRow key={s.id} s={s} level={level} cost={cost} locked={locked} canAfford={capital >= cost} onBuy={() => buy(s.id)} />
         ))}
       </ul>
 

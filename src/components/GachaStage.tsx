@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { playDrop, playKnob, playPop, playRattle, playReveal } from "../game/sound";
+import { SHARE_MILESTONES } from "../game/balance";
+import { playDrop, playKnob, playMilestone, playPop, playRattle, playReveal } from "../game/sound";
 import type { PullResult } from "../game/types";
 import { t } from "../i18n";
 import { useGame } from "../store/gameStore";
@@ -77,6 +78,7 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
     } else if (phase === "revealed" && result && revealKey > 0) {
       playPop();
       playReveal(result.rarity);
+      if (SHARE_MILESTONES.some((m) => m.shares === result.shares)) window.setTimeout(playMilestone, 900);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
