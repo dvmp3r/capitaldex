@@ -45,26 +45,26 @@ export interface Particle {
 }
 
 /** Vitrina (caja) donde viven las cápsulas; `dome` es su esfera envolvente, para la ilustración 2D de respaldo. */
-const CHAMBER = { min: { x: -0.82, y: 2.08, z: -0.52 }, max: { x: 0.82, y: 3.55, z: 0.52 } };
+const CHAMBER = { min: { x: -0.66, y: 1.92, z: -0.42 }, max: { x: 0.66, y: 3.02, z: 0.42 } };
 export const GEOM = {
   chamber: CHAMBER,
   dome: {
     c: { x: 0, y: (CHAMBER.min.y + CHAMBER.max.y) / 2, z: 0 },
     r: Math.hypot(CHAMBER.max.x, (CHAMBER.max.y - CHAMBER.min.y) / 2, CHAMBER.max.z),
   },
-  capR: 0.15,
-  dropR: 0.19,
+  capR: 0.14,
+  dropR: 0.17,
   /** La cápsula aparece dentro de la boca de salida, rueda hacia delante y cae a la bandeja. */
-  spawn: { x: 0, y: 0.95, z: 0.55 },
-  dropVel: { x: 0, y: -0.2, z: 1.7 },
-  dropZMax: 1.08,
+  spawn: { x: 0, y: 0.8, z: 0.38 },
+  dropVel: { x: 0, y: -0.2, z: 1.5 },
+  dropZMax: 0.92,
   trayY: 0.22,
   crankDuration: 0.75,
   stirDuration: 0.85,
 };
 
 const GRAVITY = 9;
-const CAP_COUNT = 64;
+const CAP_COUNT = 44;
 /** Paso fijo de la física de la vitrina y pasadas de proyección por paso. */
 const H = 1 / 120;
 const ITERATIONS = 4;

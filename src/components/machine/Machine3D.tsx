@@ -23,29 +23,35 @@ const RARITY_COLOR: Record<Rarity, THREE.Color> = {
 };
 
 const MAX_PARTICLES = 40;
+/** Paleta de la máquina: la misma de la web (grafito y oro). */
+const GOLD = "#e2b34a";
+const INK_DARK = "#1b1b1f";
 
 /** Textura con un texto centrado sobre un fondo (para placas y rótulos). */
-function makeTextTexture(text: string, w: number, h: number, ink: string, bg: string, size: number): THREE.CanvasTexture {
+function makeTextTexture(text: string, w: number, h: number, ink: string, bg: string | null, size: number, weight = 800): THREE.CanvasTexture {
   const cv = document.createElement("canvas");
   cv.width = w;
   cv.height = h;
   const g = cv.getContext("2d")!;
-  g.fillStyle = bg;
-  g.fillRect(0, 0, w, h);
+  if (bg) {
+    g.fillStyle = bg;
+    g.fillRect(0, 0, w, h);
+  }
   g.fillStyle = ink;
-  g.font = `800 ${size}px "Bricolage Grotesque", "Segoe UI", sans-serif`;
+  g.font = `${weight} ${size}px "Bricolage Grotesque", "Segoe UI", sans-serif`;
   g.textAlign = "center";
   g.textBaseline = "middle";
   g.fillText(text, w / 2, h / 2 + 2);
-  return new THREE.CanvasTexture(cv);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.anisotropy = 4;
+  return tex;
 }
 
 /**
- * Máquina gashapon en 3D estilizado (three.js plano, sin entorno ni refracción).
- * Caja roja con vitrina de cristal arriba, placa cromada delante con el mando grande y la boca de
- * salida debajo; las cápsulas son de dos mitades (color de la rareza + transparente).
- * Geometría acorde a GEOM de sim.ts. En reposo dibuja a 24 fps; con la pestaña oculta la
- * simulación sigue por intervalo para que las fases terminen.
+ * Máquina gashapon en 3D estilizado, a juego con la web: cuerpo de grafito, detalles dorados y vitrina
+ * de cristal con las cápsulas del color de cada rareza. Geometría acorde a GEOM de sim.ts.
+ * Sombras reales de una sola luz y materiales PBR con un entorno muy tenue. En reposo dibuja a 24 fps
+ * (balanceo lento); con la pestaña oculta la simulación sigue por intervalo para que las fases terminen.
  */
 export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ dimmed = false, className = "" }, ref) {
   const sim = useMemo(() => new GachaSim(), []);
@@ -75,39 +81,40 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.92;
+    renderer.toneMappingExposure = 0.95;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    // Entorno neutro muy suave: da volumen a los materiales PBR sin reflejos marcados (los metales van mates).
+    // Entorno neutro muy tenue: da volumen a los materiales PBR y hace que el oro se lea como oro.
     const pmrem = new THREE.PMREMGenerator(renderer);
     scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environmentIntensity = 0.2;
+    scene.environmentIntensity = 0.35;
     pmrem.dispose();
     const camera = new THREE.PerspectiveCamera(26, 5 / 7, 0.1, 30);
-    const camBase = new THREE.Vector3(0.9, 2.7, 9.4);
-    const lookAt = new THREE.Vector3(0, 1.95, 0);
+    const camBase = new THREE.Vector3(0.8, 2.35, 8.8);
+    const lookAt = new THREE.Vector3(0, 1.68, 0);
     camera.position.copy(camBase);
     camera.lookAt(lookAt);
 
     // Luces: la principal proyecta sombras (un solo mapa de 1024, tope ajustado a la máquina).
     scene.add(new THREE.HemisphereLight(0xe8e8ee, 0x1a1a1e, 0.5));
-    const rimLight = new THREE.DirectionalLight(0xffe2a8, 1.0);
+    const rimLight = new THREE.DirectionalLight(0xffe2a8, 1.1);
     rimLight.position.set(-2, 5, -6);
     scene.add(rimLight);
+    const { min: cm, max: cM } = GEOM.chamber;
     // Luz interior de la vitrina: las bolas se iluminan desde arriba como en un escaparate
-    const showcase = new THREE.PointLight(0xfff4dc, 1.6, 3.2, 1.6);
-    showcase.position.set(0, 3.45, 0);
+    const showcase = new THREE.PointLight(0xfff4dc, 1.5, 2.8, 1.6);
+    showcase.position.set(0, cM.y - 0.05, 0);
     scene.add(showcase);
     const key = new THREE.DirectionalLight(0xfff3e0, 2.3);
     key.position.set(4, 7, 6);
     key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
-    key.shadow.camera.left = -2.4;
-    key.shadow.camera.right = 2.4;
-    key.shadow.camera.top = 4.8;
+    key.shadow.camera.left = -2;
+    key.shadow.camera.right = 2;
+    key.shadow.camera.top = 4.2;
     key.shadow.camera.bottom = -0.6;
     key.shadow.camera.near = 2;
     key.shadow.camera.far = 20;
@@ -115,19 +122,18 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     key.shadow.normalBias = 0.015;
     key.shadow.radius = 3;
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0xa9c2ff, 0.5);
+    const fill = new THREE.DirectionalLight(0xa9c2ff, 0.45);
     fill.position.set(-5, 3, 4);
     scene.add(fill);
 
-    // Materiales
-    const red = new THREE.MeshStandardMaterial({ color: 0xc02f26, roughness: 0.45, metalness: 0.05 });
-    const redDark = new THREE.MeshStandardMaterial({ color: 0x9c231c, roughness: 0.55, metalness: 0.05 });
-    const chrome = new THREE.MeshStandardMaterial({ color: 0xc9cdd3, roughness: 0.42, metalness: 0.8 });
-    const steel = new THREE.MeshStandardMaterial({ color: 0xa9afb7, roughness: 0.5, metalness: 0.7 });
-    const dark = new THREE.MeshStandardMaterial({ color: 0x17171b, roughness: 0.6, metalness: 0.1 });
-    const white = new THREE.MeshStandardMaterial({ color: 0xe9e9e6, roughness: 0.55, metalness: 0 });
+    // Materiales: grafito (cuerpo), grafito oscuro (base y placas), oro (detalles), gris metal (mecanismo)
+    const graphite = new THREE.MeshStandardMaterial({ color: 0x27272c, roughness: 0.48, metalness: 0.12 });
+    const graphiteDark = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.55, metalness: 0.1 });
+    const dark = new THREE.MeshStandardMaterial({ color: 0x111113, roughness: 0.65, metalness: 0.1 });
+    const gold = new THREE.MeshStandardMaterial({ color: 0xd9a52a, roughness: 0.34, metalness: 0.82, emissive: 0x2a1d05 });
+    const gunmetal = new THREE.MeshStandardMaterial({ color: 0x4a4c52, roughness: 0.45, metalness: 0.7 });
     const glass = new THREE.MeshPhongMaterial({ color: 0xe6efff, specular: 0xffffff, shininess: 180, transparent: true, opacity: 0.1, depthWrite: false });
-    const glassEdge = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.14, side: THREE.BackSide, depthWrite: false });
+    const glassEdge = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, side: THREE.BackSide, depthWrite: false });
 
     const machine = new THREE.Group();
     scene.add(machine);
@@ -139,71 +145,60 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       machine.add(m);
       return m;
     };
-    const { min: cm, max: cM } = GEOM.chamber;
-    const W = 1.9; // ancho del cuerpo
-    const D = 1.28; // fondo del cuerpo
+    const W = 1.56; // ancho del cuerpo
+    const D = 1.1; // fondo del cuerpo
     const FRONT = D / 2; // z de la cara delantera
 
-    // Pie: zócalo oscuro algo más estrecho que el cuerpo, sobre cuatro patas
-    add(new RoundedBoxGeometry(W - 0.1, 0.16, D - 0.1, 2, 0.04), dark, 0, 0.16, 0);
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.CylinderGeometry(0.07, 0.08, 0.08, 16), dark, sx * (W / 2 - 0.2), 0.04, sz * (D / 2 - 0.2));
-    // Bandeja delantera donde cae la cápsula: cubeta poco profunda con borde cromado
-    const trayZ = 1.06;
-    add(new RoundedBoxGeometry(0.98, 0.06, 0.62, 2, 0.02), dark, 0, GEOM.trayY - 0.03, trayZ);
-    add(new RoundedBoxGeometry(1.0, 0.03, 0.04, 1, 0.01), chrome, 0, GEOM.trayY + 0.02, trayZ + 0.3);
-    add(new RoundedBoxGeometry(0.04, 0.03, 0.62, 1, 0.01), chrome, -0.49, GEOM.trayY + 0.02, trayZ);
-    add(new RoundedBoxGeometry(0.04, 0.03, 0.62, 1, 0.01), chrome, 0.49, GEOM.trayY + 0.02, trayZ);
-    add(new THREE.CylinderGeometry(0.05, 0.06, 0.2, 12), dark, -0.4, 0.1, trayZ + 0.2);
-    add(new THREE.CylinderGeometry(0.05, 0.06, 0.2, 12), dark, 0.4, 0.1, trayZ + 0.2);
-    // Cuerpo rojo inferior
-    add(new RoundedBoxGeometry(W, 1.84, D, 4, 0.1), red, 0, 1.16, 0);
-    // Banda decorativa clara alrededor del cuerpo, a media altura
-    add(new RoundedBoxGeometry(W + 0.02, 0.07, D + 0.02, 1, 0.02), white, 0, 0.62, 0);
-    // Marco entre cuerpo y vitrina
-    add(new RoundedBoxGeometry(W + 0.06, 0.1, D + 0.06, 2, 0.03), redDark, 0, cm.y - 0.05, 0);
+    // Pie: zócalo oscuro sobre cuatro patas
+    add(new RoundedBoxGeometry(W - 0.08, 0.18, D - 0.08, 2, 0.04), graphiteDark, 0, 0.21, 0);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.CylinderGeometry(0.06, 0.07, 0.12, 16), dark, sx * (W / 2 - 0.18), 0.06, sz * (D / 2 - 0.18));
+    // Bandeja delantera donde cae la cápsula: cubeta poco profunda con borde dorado
+    const trayZ = 0.9;
+    add(new RoundedBoxGeometry(0.8, 0.06, 0.5, 2, 0.02), graphiteDark, 0, GEOM.trayY - 0.03, trayZ);
+    add(new RoundedBoxGeometry(0.82, 0.025, 0.035, 1, 0.01), gold, 0, GEOM.trayY + 0.015, trayZ + 0.24);
+    add(new RoundedBoxGeometry(0.035, 0.025, 0.5, 1, 0.01), gold, -0.4, GEOM.trayY + 0.015, trayZ);
+    add(new RoundedBoxGeometry(0.035, 0.025, 0.5, 1, 0.01), gold, 0.4, GEOM.trayY + 0.015, trayZ);
+    add(new THREE.CylinderGeometry(0.04, 0.05, 0.2, 12), dark, -0.32, 0.1, trayZ + 0.16);
+    add(new THREE.CylinderGeometry(0.04, 0.05, 0.2, 12), dark, 0.32, 0.1, trayZ + 0.16);
+    // Cuerpo de grafito
+    add(new RoundedBoxGeometry(W, 1.56, D, 4, 0.09), graphite, 0, 1.08, 0);
+    // Banda dorada fina a media altura y marco entre cuerpo y vitrina
+    add(new RoundedBoxGeometry(W + 0.02, 0.035, D + 0.02, 1, 0.012), gold, 0, 0.5, 0);
+    add(new RoundedBoxGeometry(W + 0.05, 0.09, D + 0.05, 2, 0.03), graphiteDark, 0, cm.y - 0.05, 0);
+    add(new RoundedBoxGeometry(W + 0.06, 0.02, D + 0.06, 1, 0.008), gold, 0, cm.y - 0.1, 0);
     // Vitrina de cristal
     const chamberH = cM.y - cm.y;
     const chamberY = (cm.y + cM.y) / 2;
-    const chamber = new THREE.Mesh(new RoundedBoxGeometry(W - 0.1, chamberH - 0.02, D - 0.1, 3, 0.08), glass);
+    const chamber = new THREE.Mesh(new RoundedBoxGeometry(W - 0.1, chamberH - 0.02, D - 0.1, 3, 0.07), glass);
     chamber.position.set(0, chamberY + 0.01, 0);
     chamber.renderOrder = 10;
     machine.add(chamber);
-    const chamberEdge = new THREE.Mesh(new RoundedBoxGeometry(W - 0.08, chamberH + 0.02, D - 0.08, 3, 0.09), glassEdge);
+    const chamberEdge = new THREE.Mesh(new RoundedBoxGeometry(W - 0.08, chamberH + 0.02, D - 0.08, 3, 0.08), glassEdge);
     chamberEdge.position.copy(chamber.position);
     chamberEdge.renderOrder = 9;
     machine.add(chamberEdge);
-    // Suelo oscuro de la vitrina y esquinas (para que el cristal se lea como caja)
+    // Suelo oscuro de la vitrina y postes dorados en las esquinas
     add(new THREE.BoxGeometry(W - 0.16, 0.04, D - 0.16), dark, 0, cm.y + 0.03, 0);
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.BoxGeometry(0.05, chamberH, 0.05), chrome, sx * (W / 2 - 0.06), chamberY, sz * (D / 2 - 0.06));
-    // Tapa superior
-    add(new RoundedBoxGeometry(W + 0.06, 0.34, D + 0.06, 3, 0.09), red, 0, cM.y + 0.17, 0);
-    add(new RoundedBoxGeometry(W - 0.5, 0.18, 0.06, 2, 0.03), white, 0, cM.y + 0.19, FRONT + 0.02); // rótulo
-    const labelTex = (() => {
-      const cv = document.createElement("canvas");
-      cv.width = 512;
-      cv.height = 64;
-      const g = cv.getContext("2d")!;
-      g.fillStyle = "#1c1c1f";
-      g.font = '700 44px "Bricolage Grotesque", "Segoe UI", sans-serif';
-      g.textAlign = "center";
-      g.textBaseline = "middle";
-      g.fillText("CAPITALDEX", 256, 34);
-      const tex = new THREE.CanvasTexture(cv);
-      tex.anisotropy = 4;
-      return tex;
-    })();
-    const label = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.1625), new THREE.MeshBasicMaterial({ map: labelTex, transparent: true }));
-    label.position.set(0, cM.y + 0.19, FRONT + 0.056);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.BoxGeometry(0.04, chamberH, 0.04), gold, sx * (W / 2 - 0.05), chamberY, sz * (D / 2 - 0.05));
+    // Tapa superior con rótulo dorado y remate
+    add(new RoundedBoxGeometry(W + 0.05, 0.3, D + 0.05, 3, 0.08), graphite, 0, cM.y + 0.15, 0);
+    add(new RoundedBoxGeometry(W + 0.06, 0.02, D + 0.06, 1, 0.008), gold, 0, cM.y + 0.005, 0);
+    add(new RoundedBoxGeometry(W - 0.44, 0.17, 0.05, 2, 0.025), graphiteDark, 0, cM.y + 0.16, FRONT + 0.02); // placa del rótulo
+    const labelTex = makeTextTexture("CAPITALDEX", 512, 64, GOLD, null, 44, 700);
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.5, (W - 0.5) / 8), new THREE.MeshBasicMaterial({ map: labelTex, transparent: true }));
+    label.position.set(0, cM.y + 0.16, FRONT + 0.05);
     machine.add(label);
-    add(new THREE.CylinderGeometry(0.22, 0.26, 0.1, 24), chrome, 0, cM.y + 0.39, 0);
+    add(new THREE.CylinderGeometry(0.16, 0.2, 0.08, 24), gold, 0, cM.y + 0.34, 0);
+    add(new THREE.SphereGeometry(0.07, 16, 12), gold, 0, cM.y + 0.42, 0);
 
-    // Placa cromada delantera con el mando y la boca
-    const plateY = 1.22;
-    add(new RoundedBoxGeometry(0.98, 1.4, 0.06, 2, 0.03), steel, 0, plateY, FRONT + 0.01);
-    // Placa de precio abajo a la derecha y pegatina de "1 cartera"
-    const tagTex = makeTextTexture("1 CARTERA", 320, 72, "#1c1c1f", "#f5f5f5", 34);
-    const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.1125), new THREE.MeshBasicMaterial({ map: tagTex }));
-    tag.position.set(0.6, 0.95, FRONT + 0.012);
+    // Placa frontal del mecanismo (gris metal) con el mando y la boca
+    const plateY = 1.08;
+    add(new RoundedBoxGeometry(0.8, 1.22, 0.05, 2, 0.03), gunmetal, 0, plateY, FRONT + 0.01);
+    add(new RoundedBoxGeometry(0.84, 1.26, 0.02, 2, 0.03), gold, 0, plateY, FRONT - 0.004); // filo dorado
+    // Etiqueta de precio
+    const tagTex = makeTextTexture("1 CARTERA", 320, 72, GOLD, INK_DARK, 34);
+    const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.09), new THREE.MeshBasicMaterial({ map: tagTex }));
+    tag.position.set(0.55, 0.76, FRONT + 0.012);
     machine.add(tag);
     // Cartel dentro de la vitrina (al fondo): logo y los cinco colores
     const posterTex = (() => {
@@ -211,20 +206,20 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       cv.width = 512;
       cv.height = 512;
       const g = cv.getContext("2d")!;
-      g.fillStyle = "#f6f6f4";
+      g.fillStyle = INK_DARK;
       g.fillRect(0, 0, 512, 512);
-      g.fillStyle = "#d3362c";
+      g.fillStyle = "#d9a52a";
       g.fillRect(0, 0, 512, 92);
-      g.fillStyle = "#ffffff";
+      g.fillStyle = INK_DARK;
       g.font = '800 54px "Bricolage Grotesque", "Segoe UI", sans-serif';
       g.textAlign = "center";
       g.textBaseline = "middle";
       g.fillText("CAPITALDEX", 256, 48);
-      g.fillStyle = "#1c1c1f";
+      g.fillStyle = "#f2f2f2";
       g.font = '700 40px "Bricolage Grotesque", "Segoe UI", sans-serif';
       g.fillText("EMPRESAS REALES", 256, 160);
       g.font = '500 28px "Bricolage Grotesque", "Segoe UI", sans-serif';
-      g.fillStyle = "#555";
+      g.fillStyle = "#9a9a9e";
       g.fillText("1 117 cotizadas · 5 rarezas", 256, 215);
       const colors = [RARITY_HEX.comun, RARITY_HEX.poco_comun, RARITY_HEX.rara, RARITY_HEX.epica, RARITY_HEX.legendaria];
       colors.forEach((c, i) => {
@@ -233,33 +228,33 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
         g.arc(96 + i * 80, 320, 30, 0, Math.PI * 2);
         g.fill();
       });
-      g.fillStyle = "#1c1c1f";
+      g.fillStyle = GOLD;
       g.font = '800 44px "Bricolage Grotesque", "Segoe UI", sans-serif';
       g.fillText("¡GIRA Y COLECCIONA!", 256, 430);
       return new THREE.CanvasTexture(cv);
     })();
-    const poster = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.95), new THREE.MeshBasicMaterial({ map: posterTex }));
-    poster.position.set(0, chamberY + 0.1, cm.z - 0.08);
+    const poster = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshBasicMaterial({ map: posterTex }));
+    poster.position.set(0, chamberY + 0.06, cm.z - 0.06);
     machine.add(poster);
-    // Ranura de monedas y cerradura
-    add(new RoundedBoxGeometry(0.34, 0.16, 0.04, 2, 0.02), white, -0.62, 1.78, FRONT + 0.015);
-    add(new THREE.BoxGeometry(0.12, 0.03, 0.03), dark, -0.62, 1.78, FRONT + 0.04);
-    const lock = add(new THREE.CylinderGeometry(0.08, 0.08, 0.05, 20), chrome, 0.62, 1.78, FRONT + 0.03);
+    // Ranura de monedas (dorada) y cerradura
+    add(new RoundedBoxGeometry(0.28, 0.13, 0.035, 2, 0.015), gold, -0.5, 1.64, FRONT + 0.012);
+    add(new THREE.BoxGeometry(0.1, 0.025, 0.03), dark, -0.5, 1.64, FRONT + 0.035);
+    const lock = add(new THREE.CylinderGeometry(0.065, 0.065, 0.04, 20), gold, 0.5, 1.64, FRONT + 0.025);
     lock.rotation.x = Math.PI / 2;
-    add(new THREE.BoxGeometry(0.02, 0.1, 0.03), dark, 0.62, 1.78, FRONT + 0.06);
+    add(new THREE.BoxGeometry(0.018, 0.08, 0.03), dark, 0.5, 1.64, FRONT + 0.05);
 
-    // Mando: anillo, disco y asa; gira sobre z
-    const knobY = 1.55;
-    const knobZ = FRONT + 0.06;
+    // Mando: plato con flechas doradas, anillo dorado, disco oscuro y asa dorada; gira sobre z
+    const knobY = 1.38;
+    const knobZ = FRONT + 0.05;
     const arrowsTex = (() => {
       const cv = document.createElement("canvas");
       cv.width = cv.height = 256;
       const g = cv.getContext("2d")!;
-      g.fillStyle = "#2a63d4";
+      g.fillStyle = "#1e1e22";
       g.beginPath();
       g.arc(128, 128, 124, 0, Math.PI * 2);
       g.fill();
-      g.strokeStyle = "#ffffff";
+      g.strokeStyle = GOLD;
       g.lineWidth = 7;
       g.lineCap = "round";
       for (let k = 0; k < 3; k++) {
@@ -277,54 +272,56 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       }
       return new THREE.CanvasTexture(cv);
     })();
-    const arrows = new THREE.Mesh(new THREE.CircleGeometry(0.5, 40), new THREE.MeshBasicMaterial({ map: arrowsTex, transparent: true }));
-    arrows.position.set(0, knobY, FRONT + 0.045);
+    const arrows = new THREE.Mesh(new THREE.CircleGeometry(0.4, 40), new THREE.MeshBasicMaterial({ map: arrowsTex, transparent: true }));
+    arrows.position.set(0, knobY, FRONT + 0.04);
     machine.add(arrows);
-    add(new THREE.TorusGeometry(0.4, 0.045, 10, 48), chrome, 0, knobY, knobZ);
+    add(new THREE.TorusGeometry(0.32, 0.035, 10, 48), gold, 0, knobY, knobZ);
     const knob = new THREE.Group();
     knob.position.set(0, knobY, knobZ);
-    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.35, 0.1, 40), white);
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.08, 40), graphiteDark);
     disc.rotation.x = Math.PI / 2;
+    disc.castShadow = true;
     knob.add(disc);
-    const handle = new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.14, 0.1, 2, 0.04), redDark);
-    handle.position.z = 0.09;
+    const handle = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.11, 0.08, 2, 0.035), gold);
+    handle.position.z = 0.075;
+    handle.castShadow = true;
     knob.add(handle);
-    const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.06, 12), dark);
+    const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.05, 12), dark);
     pin.rotation.x = Math.PI / 2;
-    pin.position.z = 0.15;
+    pin.position.z = 0.125;
     knob.add(pin);
     machine.add(knob);
 
-    // Boca de salida: hueco oscuro con arco, bajo el mando
-    const mouthY = 0.85;
-    add(new THREE.BoxGeometry(0.62, 0.5, 0.56), dark, 0, mouthY - 0.1, FRONT - 0.18);
-    const arch = add(new THREE.CylinderGeometry(0.31, 0.31, 0.58, 24, 1, false, 0, Math.PI), dark, 0, mouthY + 0.15, FRONT - 0.18);
+    // Boca de salida: hueco oscuro con arco, bajo el mando, con labio dorado
+    const mouthY = 0.72;
+    add(new THREE.BoxGeometry(0.52, 0.42, 0.52), dark, 0, mouthY - 0.08, FRONT - 0.16);
+    const arch = add(new THREE.CylinderGeometry(0.26, 0.26, 0.54, 24, 1, false, 0, Math.PI), dark, 0, mouthY + 0.13, FRONT - 0.16);
     arch.rotation.x = Math.PI / 2;
     arch.rotation.z = Math.PI / 2;
-    add(new THREE.BoxGeometry(0.66, 0.04, 0.08), chrome, 0, mouthY - 0.37, FRONT + 0.08); // labio
+    add(new THREE.BoxGeometry(0.56, 0.03, 0.07), gold, 0, mouthY - 0.31, FRONT + 0.07); // labio
 
-    // Podio de exposición: disco oscuro con sombra de contacto pintada y aro dorado
+    // Podio de exposición: disco casi negro con sombra de contacto pintada y aro dorado discreto
     const shadowTex = (() => {
       const cv = document.createElement("canvas");
       cv.width = cv.height = 256;
       const g = cv.getContext("2d")!;
       const grad = g.createRadialGradient(128, 118, 20, 128, 128, 128);
-      grad.addColorStop(0, "#0e0e10");
-      grad.addColorStop(0.55, "#141416");
-      grad.addColorStop(1, "#1c1c1e");
+      grad.addColorStop(0, "#0d0d0f");
+      grad.addColorStop(0.55, "#131315");
+      grad.addColorStop(1, "#1b1b1d");
       g.fillStyle = grad;
       g.fillRect(0, 0, 256, 256);
       return new THREE.CanvasTexture(cv);
     })();
     const podiumSide = new THREE.MeshStandardMaterial({ color: 0x121214, roughness: 0.7, metalness: 0.1 });
     const podiumTop = new THREE.MeshStandardMaterial({ map: shadowTex, roughness: 0.6, metalness: 0.15 });
-    const podium = new THREE.Mesh(new THREE.CylinderGeometry(1.75, 1.85, 0.14, 64), [podiumSide, podiumTop, podiumSide]);
-    podium.position.set(0, -0.07, 0.25);
+    const podium = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.5, 0.12, 64), [podiumSide, podiumTop, podiumSide]);
+    podium.position.set(0, -0.06, 0.2);
     podium.receiveShadow = true;
     scene.add(podium);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.74, 0.016, 10, 96), new THREE.MeshStandardMaterial({ color: 0x8a6a20, roughness: 0.45, metalness: 0.7, emissive: 0x1a1204 }));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.39, 0.014, 10, 96), new THREE.MeshStandardMaterial({ color: 0x9a7424, roughness: 0.4, metalness: 0.75, emissive: 0x1a1204 }));
     ring.rotation.x = Math.PI / 2;
-    ring.position.set(0, 0.004, 0.25);
+    ring.position.set(0, 0.004, 0.2);
     scene.add(ring);
 
     // Cápsulas de la vitrina: una malla instanciada, un color por cápsula
@@ -337,7 +334,7 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     sim.caps.forEach((cp, i) => caps.setColorAt(i, RARITY_COLOR[cp.rarity]));
     machine.add(caps);
 
-    // Cápsula que cae: mitad inferior de color, tapa transparente que se abre, luz propia
+    // Cápsula que cae: del color de la rareza, la tapa se abre, luz propia
     const drop = new THREE.Group();
     drop.visible = false;
     const dropMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, metalness: 0, emissive: 0x000000 });
@@ -439,8 +436,8 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
         dropMat.emissive.copy(col).multiplyScalar(0.2 + d.glow * 0.9);
         dropLight.color.copy(col);
         dropLight.intensity = 0.6 + d.glow * 6;
-        upper.position.y = d.lid * 0.4;
-        upper.position.z = d.lid * 0.1;
+        upper.position.y = d.lid * 0.36;
+        upper.position.z = d.lid * 0.09;
         upper.rotation.x = -d.lid * 1.1;
       }
       const n = Math.min(MAX_PARTICLES, sim.particles.length);
