@@ -3,6 +3,7 @@ import { FREE_PULLS, GACHA_ODDS, PITY_EPIC, PITY_LEGENDARY } from "../game/balan
 import { fmtCapital, fmtDuration, fmtPct } from "../game/format";
 import { pullCost } from "../game/gacha";
 import { RARITY_LABEL } from "../game/rarity";
+import { playFlip, playReveal } from "../game/sound";
 import { RARITIES, type Rarity } from "../game/types";
 import { useGame } from "../store/gameStore";
 import { CompanyCard, RARITY_INK } from "./CompanyCard";
@@ -12,6 +13,7 @@ export function GachaPanel() {
   const gacha = useGame((s) => s.gacha);
   const lastPull = useGame((s) => s.lastPull);
   const openPack = useGame((s) => s.openPack);
+  const sound = useGame((s) => s.settings.sound);
   const [revealKey, setRevealKey] = useState(0);
 
   const cost = pullCost(gacha.pulls);
@@ -20,7 +22,13 @@ export function GachaPanel() {
   const legendary = lastPull?.rarity === "legendaria";
 
   const onOpen = () => {
-    if (openPack()) setRevealKey((k) => k + 1);
+    const result = openPack();
+    if (!result) return;
+    setRevealKey((k) => k + 1);
+    if (sound) {
+      playFlip();
+      playReveal(result.rarity);
+    }
   };
 
   return (

@@ -16,6 +16,11 @@ export interface OfflineReport {
   earned: number;
 }
 
+export interface Settings {
+  sound: boolean;
+  reducedMotion: boolean;
+}
+
 export interface GameState {
   capital: number;
   totalEarned: number;
@@ -23,6 +28,7 @@ export interface GameState {
   gacha: GachaState;
   lastTick: number;
   stats: Stats;
+  settings: Settings;
   /** Transitorio (no se guarda) */
   lastPull: PullResult | null;
   offline: OfflineReport | null;
@@ -35,7 +41,10 @@ export interface GameState {
   reset: () => void;
   exportSave: () => string;
   importSave: (text: string) => ParseResult;
+  setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 }
+
+const DEFAULT_SETTINGS: Settings = { sound: true, reducedMotion: false };
 
 function initialState(now = Date.now()) {
   return {
@@ -58,6 +67,9 @@ export const useGame = create<GameState>()(
   persist(
     (set, get) => ({
       ...initialState(),
+      settings: DEFAULT_SETTINGS,
+
+      setSetting: (key, value) => set({ settings: { ...get().settings, [key]: value } }),
 
       tick: (now = Date.now()) => {
         const s = get();
@@ -121,7 +133,7 @@ export const useGame = create<GameState>()(
 
       dismissOffline: () => set({ offline: null }),
       clearLastPull: () => set({ lastPull: null }),
-      reset: () => set(initialState()),
+      reset: () => set(initialState()), // los ajustes se conservan
 
       exportSave: () => {
         const s = get();
@@ -169,7 +181,12 @@ export const useGame = create<GameState>()(
         gacha: s.gacha,
         lastTick: s.lastTick,
         stats: s.stats,
+        settings: s.settings,
       }),
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<GameState>;
+        return { ...current, ...p, settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) } };
+      },
       migrate: (persisted, version) => {
         // Punto único para migrar guardados antiguos cuando cambie SAVE_VERSION.
         if (version < 1) return { ...initialState(), ...(persisted as object) };

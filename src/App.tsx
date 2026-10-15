@@ -8,6 +8,13 @@ import { useGame } from "./store/gameStore";
 
 export default function App() {
   const tick = useGame((s) => s.tick);
+  const reducedMotion = useGame((s) => s.settings.reducedMotion);
+
+  // El ajuste de animaciones reducidas se aplica como atributo en <html>; el CSS lo trata igual que prefers-reduced-motion.
+  useEffect(() => {
+    if (reducedMotion) document.documentElement.dataset.motion = "reduced";
+    else delete document.documentElement.dataset.motion;
+  }, [reducedMotion]);
 
   useEffect(() => {
     const id = window.setInterval(() => tick(Date.now()), TICK_MS);
