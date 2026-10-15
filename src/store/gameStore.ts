@@ -272,7 +272,8 @@ export const useGame = create<GameState>()(
 
       dismissOffline: () => set({ offline: null }),
       clearLastPull: () => set({ lastPull: null }),
-      reset: () => set(initialState()), // los ajustes se conservan
+      // Los ajustes se conservan, salvo que la introducción vuelve a mostrarse.
+      reset: () => set({ ...initialState(), settings: { ...get().settings, introSeen: false } }),
 
       exportSave: () => {
         const s = get();
