@@ -9,7 +9,7 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [x] Universo inicial de ~300 empresas con datos reales (`data/empresas.xlsx`)
 - [x] Esqueleto del cliente con el bucle básico jugable
 - [x] Revisar reparto de rarezas con los datos reales y ajustar umbrales (15-oct-2026: 3/7/21/38/31 %)
-- [ ] Elegir nombre: comprobar dominio (.com / .io / .es) y marca en EUIPO y USPTO. **Decisión de Jorge.** Consulta RDAP del 15-oct-2026: `capitaldex.com` y `portfoliolegends.com` registrados; `capitaldex.io`, `capitaldex.app`, `capitaldex.net`, `tickr.io` y `bolsagacha.com` libres; los `.es` no se pueden consultar por RDAP (mirar en dominios.es).
+- [ ] Elegir nombre: comprobar dominio (.com / .io / .es) y marca en EUIPO y USPTO. **Decisión del autor.** Consulta RDAP del 15-oct-2026: `capitaldex.com` y `portfoliolegends.com` registrados; `capitaldex.io`, `capitaldex.app`, `capitaldex.net`, `tickr.io` y `bolsagacha.com` libres; los `.es` no se pueden consultar por RDAP (mirar en dominios.es).
 - [ ] Landing con lista de espera (una página estática + formulario)
 - [ ] Cuenta gratuita en Twelve Data y Finnhub; confirmar límites y licencia
 

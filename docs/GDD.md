@@ -85,7 +85,7 @@ Las tres primeras carteras son gratis (tutorial). El exponente se ajustará con 
 
 Dentro de una rareza, todas las empresas tienen la misma probabilidad.
 
-**Sin piedad (decisión de Jorge, 15-oct-2026):** cada cartera es una tirada pura. El juego debe ser difícil de completar; se muestran las rachas sin épica y sin legendaria como dato, no como garantía.
+**Sin piedad (decisión del autor, 15-oct-2026):** cada cartera es una tirada pura. El juego debe ser difícil de completar; se muestran las rachas sin épica y sin legendaria como dato, no como garantía.
 
 ### Duplicados = acciones
 
@@ -208,7 +208,7 @@ Nunca: vender ventaja en el ranking, mercado de cartas con dinero real, criptoac
 ## 11. Experiencia y arte
 
 - **Idiomas:** español e inglés desde la fase 2. Las claves de texto se separan desde el principio.
-- **Estilo (v0.4, 15-oct-2026):** tema oscuro de negro neutro sin tinte (OKLCH 0,11 / 0 / 0), blanco como color de marca y dorado solo en el logotipo; el color lo ponen las rarezas. Jorge descartó el fondo blanco con frambuesa de la v0.2. Tipografía Bricolage Grotesque para texto y JetBrains Mono para cifras. Cartas verticales 5:7 con marco de color por rareza y lámina animada solo en las legendarias. Nada de logos ni emojis: el arte de cada carta es una **silueta de gráfico generada a partir del ticker** (determinista, única por empresa) coloreada por sector, con ticker grande, nombre y código de país. Las no descubiertas se muestran como silueta en gris con "???".
+- **Estilo (v0.4, 15-oct-2026):** tema oscuro de negro neutro sin tinte (OKLCH 0,11 / 0 / 0), blanco como color de marca y dorado solo en el logotipo; el color lo ponen las rarezas. El autor descartó el fondo blanco con frambuesa de la v0.2. Tipografía Bricolage Grotesque para texto y JetBrains Mono para cifras. Cartas verticales 5:7 con marco de color por rareza y lámina animada solo en las legendarias. Nada de logos ni emojis: el arte de cada carta es una **silueta de gráfico generada a partir del ticker** (determinista, única por empresa) coloreada por sector, con ticker grande, nombre y código de país. Las no descubiertas se muestran como silueta en gris con "???".
 - **Apertura de cartera (v0.5):** una **máquina de cápsulas en 3D** (three.js, `src/components/gacha3d/`): cúpula de cristal con transmisión real, cuerpo de grafito, manivela cromada, ventana de cristal de salida y sombras de contacto. Las cápsulas de la cúpula tienen **física propia** (`sim.ts`, sin dependencias): gravedad, choques entre ellas y con la cúpula, remolino al girar la manivela. Fases: giro de manivela (0,75 s) → cae la cápsula **ya con el color de su rareza** (plateada, verde, azul, violeta, dorada) con gravedad, aplastamiento y dos rebotes → late con luz de ese color, la tapa sale por la bisagra y saltan partículas (más cuanto más rara) → la carta sube desde la cápsula. Se salta tocando. Cada fase tiene su sonido sintetizado. Con pocos fotogramas (pestaña oculta) hay tope de tiempo por fase.
 - **Primera vez:** pantalla a toda página en negro con un foco de luz detrás de la máquina, el titular "Colecciona el mercado.", la leyenda de colores de cápsula con sus probabilidades y las tres carteras gratis. Se sale con "Entrar en mi colección" o "Saltar"; se puede volver a ver desde el menú.
 - **Accesibilidad:** contraste AA, modo reducido de animaciones, teclado en toda la interfaz.

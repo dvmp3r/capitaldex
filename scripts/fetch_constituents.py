@@ -15,7 +15,7 @@ import requests
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data" / "raw" / "universe.json"
-HEADERS = {"User-Agent": "CapitalDex/0.1 (proyecto personal; contacto: admin@solano20.es)"}
+HEADERS = {"User-Agent": "CapitalDex/0.1 (juego de navegador; https://kaminarishop.store)"}
 
 # (id del set, URL, columnas candidatas con el ticker, función de normalización a símbolo Yahoo, mínimo de filas)
 def us(t: str) -> str:

@@ -31,13 +31,13 @@ npm run data       # regenerar datos desde el Excel
 
 ## Protocolo de iteración autónoma
 
-Cuando Jorge diga "sigue el roadmap" (o se ejecute en bucle), hacer exactamente esto, una tarea por iteración:
+Cuando el autor diga "sigue el roadmap" (o se ejecute en bucle), hacer exactamente esto, una tarea por iteración:
 
 1. Leer `docs/ROADMAP.md` y elegir la **primera tarea `[ ]` de la fase más baja** que no esté bloqueada por una decisión humana (nombre, dominio, cuentas en servicios externos, pagos, legal). Las bloqueadas se saltan y se listan al final.
 2. Si la tarea es ambigua, decidir con el GDD y anotar la decisión en el GDD (sección correspondiente o "Preguntas abiertas").
 3. Implementar con pruebas. Ejecutar `npm test` y `npm run build`. Si algo falla, arreglarlo antes de seguir.
 4. Comprobar en el navegador la pantalla afectada (captura).
 5. Marcar la tarea `[x]` en el roadmap con la fecha, y hacer commit.
-6. Informar en tres líneas: qué se hizo, qué se decidió, qué sigue. Parar si la siguiente tarea requiere a Jorge.
+6. Informar en tres líneas: qué se hizo, qué se decidió, qué sigue. Parar si la siguiente tarea requiere al autor.
 
 No tocar `data/raw/` ni la lista de empresas sin pedirlo. No añadir dependencias pesadas (motores de juego, UI kits) sin consultarlo.
