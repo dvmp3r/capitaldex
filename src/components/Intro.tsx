@@ -87,7 +87,7 @@ export function Intro() {
                     <path d="M -9 0 A 9 9 0 0 0 9 0 Z" fill={`var(--color-${r})`} opacity="0.55" />
                   </svg>
                   <span className="font-semibold">{rarityLabel(r)}</span>
-                  <span className="num text-white/70">{fmtPct(GACHA_ODDS[r], 0)}</span>
+                  <span className="num text-white/70">{fmtPct(GACHA_ODDS[r], GACHA_ODDS[r] < 0.05 ? 1 : 0)}</span>
                 </li>
               ))}
             </ul>

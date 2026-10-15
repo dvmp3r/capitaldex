@@ -74,7 +74,7 @@ export function GachaPanel() {
           {[...RARITIES].reverse().map((r) => (
             <li key={r} className="flex justify-between">
               <span className={`font-sans font-semibold ${RARITY_INK[r]}`}>{rarityLabel(r)}</span>
-              <span>{fmtPct(GACHA_ODDS[r], 0)}</span>
+              <span>{fmtPct(GACHA_ODDS[r], GACHA_ODDS[r] < 0.05 ? 1 : 0)}</span>
             </li>
           ))}
         </ul>

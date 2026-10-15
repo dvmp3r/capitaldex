@@ -18,11 +18,11 @@ export const RARITY_THRESHOLDS_USD: Record<Exclude<Rarity, "comun">, number> = {
 
 /** Probabilidad de cada rareza en una cartera. Deben sumar 1. */
 export const GACHA_ODDS: Record<Rarity, number> = {
-  comun: 0.55,
-  poco_comun: 0.27,
-  rara: 0.12,
-  epica: 0.05,
-  legendaria: 0.01,
+  comun: 0.62,
+  poco_comun: 0.255,
+  rara: 0.1,
+  epica: 0.022,
+  legendaria: 0.003, // ~1 cada 333 carteras: sin piedad, la legendaria tiene que costar
 };
 
 

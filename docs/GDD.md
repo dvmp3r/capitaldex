@@ -47,8 +47,8 @@ La rareza depende de la **capitalización bursátil en dólares**. Los umbrales 
 
 | Rareza | Capitalización (USD) | Color | Reparto real (15-oct-2026, 1 100 empresas) |
 |---|---|---|---|
-| Legendaria | ≥ 1 billón (1 T) | dorado | ~1 % |
-| Épica | 250 000 M – 1 T | morado | ~5 % |
+| Legendaria | ≥ 1 billón (1 T) | dorado | 0,3 % |
+| Épica | 250 000 M – 1 T | morado | 2,2 % |
 | Rara | 80 000 M – 250 000 M | azul | ~18 % |
 | Poco común | 25 000 M – 80 000 M | verde | ~36 % |
 | Común | < 25 000 M | plateado | ~39 % |
@@ -77,11 +77,13 @@ Las tres primeras carteras son gratis (tutorial). El exponente se ajustará con 
 
 | Rareza | Probabilidad |
 |---|---|
-| Común | 55 % |
-| Poco común | 27 % |
-| Rara | 12 % |
-| Épica | 5 % |
-| Legendaria | 1 % |
+| Común | 62 % |
+| Poco común | 25,5 % |
+| Rara | 10 % |
+| Épica | 2,2 % |
+| Legendaria | 0,3 % |
+
+Cambio del 15-oct-2026: con 1 % y 5 % salían legendarias en los primeros minutos; sin piedad, la legendaria debe ser un acontecimiento (~1 cada 333 carteras).
 
 Dentro de una rareza, todas las empresas tienen la misma probabilidad.
 
