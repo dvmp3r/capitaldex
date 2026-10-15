@@ -8,8 +8,8 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [x] Documento de diseño v0.1 (`docs/GDD.md`)
 - [x] Universo inicial de ~300 empresas con datos reales (`data/empresas.xlsx`)
 - [x] Esqueleto del cliente con el bucle básico jugable
-- [ ] Revisar reparto de rarezas con los datos reales y ajustar umbrales
-- [ ] Elegir nombre: comprobar dominio (.com / .io / .es) y marca en EUIPO y USPTO
+- [x] Revisar reparto de rarezas con los datos reales y ajustar umbrales (15-oct-2026: 3/7/21/38/31 %)
+- [ ] Elegir nombre: comprobar dominio (.com / .io / .es) y marca en EUIPO y USPTO. **Decisión de Jorge.** Consulta RDAP del 15-oct-2026: `capitaldex.com` y `portfoliolegends.com` registrados; `capitaldex.io`, `capitaldex.app`, `capitaldex.net`, `tickr.io` y `bolsagacha.com` libres; los `.es` no se pueden consultar por RDAP (mirar en dominios.es).
 - [ ] Landing con lista de espera (una página estática + formulario)
 - [ ] Cuenta gratuita en Twelve Data y Finnhub; confirmar límites y licencia
 
@@ -17,11 +17,11 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 
 ## Fase 1 — MVP de un jugador (6 semanas)
 
-- [ ] Gacha con probabilidades visibles y piedad
+- [x] Gacha con probabilidades visibles y piedad (15-oct-2026)
 - [ ] Colección con filtros (rareza, índice, sector, país) y buscador
-- [ ] Duplicados como acciones con hitos
-- [ ] Sets por índice con bonus
-- [ ] Botón Operar y progreso offline
+- [x] Duplicados como acciones con hitos (15-oct-2026)
+- [x] Sets por índice con bonus (15-oct-2026)
+- [x] Botón Operar y progreso offline (15-oct-2026)
 - [ ] Guardado local versionado, exportar e importar partida
 - [ ] Ajustes: sonido, animaciones reducidas, idioma preparado
 - [ ] Animación de apertura con variante legendaria
