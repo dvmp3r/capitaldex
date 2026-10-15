@@ -47,6 +47,67 @@ function makeTextTexture(text: string, w: number, h: number, ink: string, bg: st
   return tex;
 }
 
+/** La marca tal cual aparece en la cabecera: icono de cápsula + "Capital" en blanco + "Dex" en oro. */
+function makeWordmarkTexture(): THREE.CanvasTexture {
+  const cv = document.createElement("canvas");
+  cv.width = 512;
+  cv.height = 80;
+  const g = cv.getContext("2d")!;
+  g.font = '800 54px "Bricolage Grotesque", "Segoe UI", sans-serif';
+  g.textBaseline = "middle";
+  const wCapital = g.measureText("Capital").width;
+  const wDex = g.measureText("Dex").width;
+  const icon = 56;
+  const gap = 14;
+  const total = icon + gap + wCapital + wDex;
+  let x = (512 - total) / 2;
+  // Icono: cuadrado oscuro redondeado, cápsula dorada y línea verde que la cruza hacia arriba
+  const s = icon / 64;
+  g.save();
+  g.translate(x, (80 - icon) / 2);
+  g.scale(s, s);
+  g.fillStyle = "#141416";
+  g.beginPath();
+  g.roundRect(0, 0, 64, 64, 14);
+  g.fill();
+  g.fillStyle = "#c48a0e";
+  g.beginPath();
+  g.arc(32, 32, 19, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#f5b921";
+  g.beginPath();
+  g.arc(32, 32, 19, Math.PI, 0);
+  g.fill();
+  g.strokeStyle = "#141416";
+  g.lineWidth = 2.2;
+  g.beginPath();
+  g.moveTo(13, 32);
+  g.lineTo(51, 32);
+  g.stroke();
+  g.strokeStyle = "#3ddc84";
+  g.lineWidth = 4;
+  g.lineCap = "round";
+  g.lineJoin = "round";
+  g.beginPath();
+  g.moveTo(10, 49);
+  g.lineTo(21, 40);
+  g.lineTo(28, 45);
+  g.lineTo(36, 34);
+  g.lineTo(42, 37);
+  g.lineTo(54, 19);
+  g.stroke();
+  g.restore();
+  x += icon + gap;
+  g.textAlign = "left";
+  g.fillStyle = "#f2f2f2";
+  g.fillText("Capital", x, 42);
+  g.fillStyle = GOLD;
+  g.fillText("Dex", x + wCapital, 42);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.anisotropy = 4;
+  return tex;
+}
+
 /**
  * Máquina gashapon en 3D estilizado, a juego con la web: cuerpo de grafito, detalles dorados y vitrina
  * de cristal con las cápsulas del color de cada rareza. Geometría acorde a GEOM de sim.ts.
@@ -183,9 +244,9 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     // Tapa superior con rótulo dorado y remate
     add(new RoundedBoxGeometry(W + 0.05, 0.3, D + 0.05, 3, 0.08), graphite, 0, cM.y + 0.15, 0);
     add(new RoundedBoxGeometry(W + 0.06, 0.02, D + 0.06, 1, 0.008), gold, 0, cM.y + 0.005, 0);
-    add(new RoundedBoxGeometry(W - 0.44, 0.17, 0.05, 2, 0.025), graphiteDark, 0, cM.y + 0.16, FRONT + 0.02); // placa del rótulo
-    const labelTex = makeTextTexture("CAPITALDEX", 512, 64, GOLD, null, 44, 700);
-    const label = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.5, (W - 0.5) / 8), new THREE.MeshBasicMaterial({ map: labelTex, transparent: true }));
+    add(new RoundedBoxGeometry(W - 0.42, 0.21, 0.05, 2, 0.025), graphiteDark, 0, cM.y + 0.16, FRONT + 0.02); // placa del rótulo
+    const labelTex = makeWordmarkTexture();
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.5, (W - 0.5) / 6.4), new THREE.MeshBasicMaterial({ map: labelTex, transparent: true }));
     label.position.set(0, cM.y + 0.16, FRONT + 0.05);
     machine.add(label);
     add(new THREE.CylinderGeometry(0.16, 0.2, 0.08, 24), gold, 0, cM.y + 0.34, 0);

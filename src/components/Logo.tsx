@@ -3,11 +3,11 @@ export function LogoMark({ size = 24, className = "" }: { size?: number; classNa
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" className={className}>
       <rect width="64" height="64" rx="14" fill="#141416" />
-      <circle cx="32" cy="31" r="18" fill="#c48a0e" />
-      <path d="M14 31a18 18 0 0 1 36 0z" fill="#f5b921" />
-      <path d="M14 31h36" stroke="#141416" strokeWidth="2.2" />
-      <ellipse cx="25" cy="22" rx="6" ry="3.5" fill="#fff" opacity="0.55" transform="rotate(-25 25 22)" />
-      <path d="M18 52l8-7 7 4 13-11" fill="none" stroke="#f5b921" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="32" cy="32" r="19" fill="#c48a0e" />
+      <path d="M13 32a19 19 0 0 1 38 0z" fill="#f5b921" />
+      <path d="M13 32h38" stroke="#141416" strokeWidth="2.2" />
+      <ellipse cx="25" cy="23" rx="6" ry="3.5" fill="#fff" opacity="0.5" transform="rotate(-25 25 23)" />
+      <path d="M10 49l11-9 7 5 8-11 6 3 12-18" fill="none" stroke="#3ddc84" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
