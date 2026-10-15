@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Collection } from "./components/Collection";
 import { GachaPanel } from "./components/GachaPanel";
 import { Header } from "./components/Header";
+import { Intro } from "./components/Intro";
 import { OfflineBanner } from "./components/OfflineBanner";
 import { TICK_MS } from "./game/balance";
 import { t } from "./i18n";
@@ -45,6 +46,7 @@ export default function App() {
       <footer className="mx-auto max-w-7xl px-4 pb-10 pt-6 text-[11px] leading-relaxed text-muted [text-wrap:pretty]">
         <p className="max-w-[72ch]">{t("app.disclaimer")}</p>
       </footer>
+      <Intro />
     </div>
   );
 }

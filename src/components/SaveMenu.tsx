@@ -76,6 +76,7 @@ export function SaveMenu() {
           <div className={heading}>{t("menu.settings")}</div>
           <Toggle label={t("menu.sound")} checked={settings.sound} onChange={(v) => setSetting("sound", v)} />
           <Toggle label={t("menu.reducedMotion")} checked={settings.reducedMotion} onChange={(v) => setSetting("reducedMotion", v)} />
+          <button className={item} onClick={() => { setSetting("introSeen", false); close(); }}>{t("menu.intro")}</button>
           <div className="my-1 border-t border-line" />
           <div className={heading}>{t("menu.game")}</div>
           <button className={item} onClick={onExport}>{t("menu.export")}</button>

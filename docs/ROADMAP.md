@@ -26,6 +26,8 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [x] Ajustes: sonido (sintetizado, sin archivos) y animaciones reducidas (15-oct-2026)
 - [x] Idioma preparado: textos en `src/i18n/es.ts` con `t()` tipado (15-oct-2026). Pendiente para la fase 2: nombres de sector y de país vienen de los datos, habrá que darles clave también.
 - [x] Animación de apertura con variante legendaria (15-oct-2026)
+- [x] Máquina de cápsulas: el color de la cápsula anuncia la rareza; sonidos por fase (15-oct-2026)
+- [x] Introducción a toda pantalla para la primera vez, con las tres carteras gratis (15-oct-2026)
 - [x] Tutorial de 3 tiradas gratis: pistas contextuales en las primeras carteras (15-oct-2026)
 - [x] Pantalla de estadísticas (tiradas, tiempo jugado, mejor tirada) (15-oct-2026)
 - [ ] Despliegue en Cloudflare Pages con dominio provisional

@@ -3,33 +3,30 @@ import { FREE_PULLS, GACHA_ODDS, PITY_EPIC, PITY_LEGENDARY } from "../game/balan
 import { fmtCapital, fmtDuration, fmtPct } from "../game/format";
 import { pullCost } from "../game/gacha";
 import { rarityLabel } from "../game/rarity";
-import { playFlip, playReveal } from "../game/sound";
 import { RARITIES, type Rarity } from "../game/types";
 import { t } from "../i18n";
 import { useGame } from "../store/gameStore";
-import { CompanyCard, RARITY_INK } from "./CompanyCard";
+import { RARITY_INK } from "./CompanyCard";
+import type { MachinePhase } from "./GachaMachine";
+import { GachaStage } from "./GachaStage";
 
 export function GachaPanel() {
   const capital = useGame((s) => s.capital);
   const gacha = useGame((s) => s.gacha);
   const lastPull = useGame((s) => s.lastPull);
   const openPack = useGame((s) => s.openPack);
-  const sound = useGame((s) => s.settings.sound);
   const [revealKey, setRevealKey] = useState(0);
+  const [phase, setPhase] = useState<MachinePhase>("idle");
 
   const cost = pullCost(gacha.pulls);
   const freeLeft = Math.max(0, FREE_PULLS - gacha.pulls);
   const canAfford = capital >= cost;
+  const busy = phase === "turning" || phase === "dropping" || phase === "opening";
   const legendary = lastPull?.rarity === "legendaria";
 
   const onOpen = () => {
-    const result = openPack();
-    if (!result) return;
-    setRevealKey((k) => k + 1);
-    if (sound) {
-      playFlip();
-      playReveal(result.rarity);
-    }
+    if (busy) return;
+    if (openPack()) setRevealKey((k) => k + 1);
   };
 
   return (
@@ -39,25 +36,9 @@ export function GachaPanel() {
         <span className="num text-xs text-muted">{t("gacha.opened", { n: gacha.pulls })}</span>
       </div>
 
-      {/* La carta: dorso antes de abrir, volteo al abrir. */}
-      <div className="flip-scene relative mx-auto mt-3 w-full max-w-[280px]" data-legendary={legendary ? "true" : undefined}>
-        {lastPull ? (
-          <div key={revealKey} className={`flip-inner ${legendary ? "is-legendary" : ""}`}>
-            <div className="flip-face">
-              <CompanyCard company={lastPull.company} shares={lastPull.shares} size="lg" />
-            </div>
-            <div className="flip-face flip-back">
-              <CardBack />
-            </div>
-          </div>
-        ) : (
-          <button type="button" onClick={onOpen} disabled={!canAfford} className="w-full text-left disabled:cursor-not-allowed" aria-label={t("gacha.open")}>
-            <CardBack ready={canAfford} />
-          </button>
-        )}
-      </div>
+      <GachaStage result={lastPull} revealKey={revealKey} onPull={onOpen} pullEnabled={canAfford} onPhase={setPhase} className="mx-auto mt-3 max-w-[280px]" />
 
-      {lastPull && (
+      {lastPull && phase === "revealed" && (
         <p key={`msg-${revealKey}`} className="rise mt-3 text-center text-sm">
           {legendary ? (
             <span className="font-bold text-legendaria-ink">{t("gacha.legendary")}</span>
@@ -73,7 +54,7 @@ export function GachaPanel() {
         </p>
       )}
 
-      <button onClick={onOpen} disabled={!canAfford} className="btn-primary mt-3 flex h-12 w-full items-center justify-between px-4 text-[15px]">
+      <button onClick={onOpen} disabled={!canAfford || busy} className="btn-primary mt-3 flex h-12 w-full items-center justify-between px-4 text-[15px]">
         <span>{lastPull ? t("gacha.openAnother") : t("gacha.open")}</span>
         <span className="num text-sm font-semibold opacity-90">
           {freeLeft > 0 ? t("gacha.free", { n: freeLeft }) : canAfford ? fmtCapital(cost) : t("gacha.missing", { n: fmtCapital(cost - capital) })}
@@ -151,19 +132,6 @@ function StatsPanel() {
         ))}
       </dl>
     </details>
-  );
-}
-
-function CardBack({ ready = false }: { ready?: boolean }) {
-  return (
-    <div className={`card-back ${ready ? "card-back-ready" : ""}`} aria-hidden="true">
-      <div className="text-center">
-        <div className="font-sans text-[28px] font-extrabold tracking-tight" style={{ fontVariationSettings: '"opsz" 96' }}>
-          Capital<span className="opacity-70">Dex</span>
-        </div>
-        <div className="mt-1 text-[11px] font-medium uppercase tracking-[0.2em] opacity-80">{t("gacha.back")}</div>
-      </div>
-    </div>
   );
 }
 

@@ -33,6 +33,7 @@ export const es = {
     export: "Exportar partida",
     import: "Importar partida…",
     reset: "Reiniciar partida",
+    intro: "Ver la introducción",
     exported: "Partida exportada.",
     imported: "Partida importada.",
     resetDone: "Partida reiniciada.",
@@ -71,6 +72,19 @@ export const es = {
     hintPaid: "A partir de ahora cada cartera cuesta capital. Operar te da cinco segundos de ingresos al instante.",
     hintSaving: "Mientras ahorras, mira en la colección qué índices te faltan: completarlos multiplica tus ingresos.",
     hintEpic: "Una épica. Las de más de 350 000 M $ son las que más producen después de las legendarias.",
+    skipHint: "Toca para saltar",
+  },
+  intro: {
+    title: "Colecciona el mercado.",
+    lead:
+      "{n} empresas reales que cotizan en bolsa, {legendary} de ellas legendarias. Cada empresa que consigas genera capital por segundo; las repetidas se convierten en acciones. Gira la máquina: el color de la cápsula te dice la rareza antes de abrirla.",
+    legend: "Color de la cápsula",
+    first: "Abrir mi primera cartera",
+    free: "gratis",
+    next: "Abrir otra",
+    enter: "Entrar en mi colección",
+    skip: "Saltar la introducción",
+    progress: "{n} de {total} carteras gratis",
   },
   stats: {
     title: "Estadísticas",

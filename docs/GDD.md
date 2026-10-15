@@ -189,7 +189,8 @@ Nunca: vender ventaja en el ranking, mercado de cartas con dinero real, criptoac
 
 - **Idiomas:** español e inglés desde la fase 2. Las claves de texto se separan desde el principio.
 - **Estilo (v0.2, 15-oct-2026):** fondo blanco puro, marca frambuesa (OKLCH 0,56 / 0,22 / 353°), tipografía Bricolage Grotesque para texto y JetBrains Mono para cifras. Cartas verticales 5:7 con marco de color por rareza y lámina animada solo en las legendarias. Nada de logos ni emojis: el arte de cada carta es una **silueta de gráfico generada a partir del ticker** (determinista, única por empresa) coloreada por sector, con ticker grande, nombre y código de país. Las no descubiertas se muestran como silueta en gris con "???".
-- **Apertura de cartera:** la cartera es una carta boca abajo con el dorso de la marca; al abrirla se voltea (menos de 0,8 s) y muestra la empresa. Sin modales: el progreso offline se avisa con un banner bajo la cabecera.
+- **Apertura de cartera (v0.3):** una **máquina de cápsulas** dibujada en SVG. Al abrir, la manivela gira, las cápsulas de la cúpula se agitan, cae una cápsula por la rampa y **su color anuncia la rareza** antes de abrirse (gris, verde, azul, violeta, dorada); se abre con un destello y la carta aparece encima de la máquina. Dura 1,6 s y se salta tocando. Cada fase tiene su sonido sintetizado. Sin modales: el progreso offline se avisa con un banner bajo la cabecera.
+- **Primera vez:** pantalla a toda página en frambuesa (la única superficie "empapada" de color) con el titular "Colecciona el mercado.", la leyenda de colores de cápsula con sus probabilidades, la máquina en grande y las tres carteras gratis. Se sale con "Entrar en mi colección" o "Saltar"; se puede volver a ver desde el menú.
 - **Accesibilidad:** contraste AA, modo reducido de animaciones, teclado en toda la interfaz.
 - **Móvil primero** en el diseño de la colección: cuadrícula de 2 columnas en móvil, 4 a 6 en escritorio.
 

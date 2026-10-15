@@ -19,6 +19,8 @@ export interface OfflineReport {
 export interface Settings {
   sound: boolean;
   reducedMotion: boolean;
+  /** La introducción a toda pantalla ya se ha visto (o se ha saltado). */
+  introSeen: boolean;
 }
 
 export interface GameState {
@@ -44,7 +46,7 @@ export interface GameState {
   setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 }
 
-const DEFAULT_SETTINGS: Settings = { sound: true, reducedMotion: false };
+const DEFAULT_SETTINGS: Settings = { sound: true, reducedMotion: false, introSeen: false };
 
 function initialState(now = Date.now()) {
   return {
