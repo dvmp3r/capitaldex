@@ -82,7 +82,7 @@ export function SaveMenu() {
           <button className={item} onClick={onExport}>{t("menu.export")}</button>
           <button className={item} onClick={() => file.current?.click()}>{t("menu.import")}</button>
           <div className="my-1 border-t border-line" />
-          <button className={`${item} text-brand`} onClick={onReset}>{t("menu.reset")}</button>
+          <button className={`${item} text-[oklch(0.75_0.17_25)]`} onClick={onReset}>{t("menu.reset")}</button>
         </div>
       </details>
       <input ref={file} type="file" accept="application/json,.json" className="hidden" onChange={(e) => onImportFile(e.target.files?.[0])} />

@@ -14,7 +14,7 @@ export function Header() {
       {/* Móvil: dos filas (marca + acciones / cifras). Desde sm: una fila. */}
       <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1.5 px-4 py-2 sm:flex sm:gap-6 sm:py-2.5">
         <a href="/" className="order-1 shrink-0 font-sans text-[20px] font-extrabold tracking-tight sm:text-[22px]" style={{ fontVariationSettings: '"opsz" 96' }}>
-          Capital<span className="text-brand">Dex</span>
+          Capital<span className="text-gold">Dex</span>
         </a>
 
         <div className="order-3 col-span-2 flex items-baseline gap-4 sm:order-2 sm:col-span-1 sm:ml-auto sm:gap-5">

@@ -69,10 +69,10 @@ export function CompanyCard({ company, shares = 0, hidden = false, size = "lg", 
         </div>
 
         {!hidden && big && (
-          <dl className="num mt-2 grid grid-cols-3 gap-2 border-t border-line pt-2 text-[11px]">
+          <dl className="num mt-2 flex justify-between gap-2 whitespace-nowrap border-t border-line pt-2 text-[11px]">
             <div><dt className="text-muted">{t("card.revenue")}</dt><dd className="font-medium">{fmtUsd(company.revenueUsd)}</dd></div>
             <div><dt className="text-muted">{t("card.pe")}</dt><dd className="font-medium">{company.pe ? company.pe.toFixed(1) : "–"}</dd></div>
-            <div><dt className="text-muted">{t("card.dividend")}</dt><dd className="font-medium">{fmtPct(company.dividendYield)}</dd></div>
+            <div className="text-right"><dt className="text-muted">{t("card.dividend")}</dt><dd className="font-medium">{fmtPct(company.dividendYield)}</dd></div>
           </dl>
         )}
 

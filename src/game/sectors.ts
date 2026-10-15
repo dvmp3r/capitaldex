@@ -17,7 +17,7 @@ export function sectorHue(sector: string): number {
   return SECTOR_HUE[sector] ?? 353;
 }
 
-export function sectorColor(sector: string, l = 0.55, c = 0.15, alpha = 1): string {
+export function sectorColor(sector: string, l = 0.78, c = 0.16, alpha = 1): string {
   const hue = sectorHue(sector);
   return alpha === 1 ? `oklch(${l} ${c} ${hue})` : `oklch(${l} ${c} ${hue} / ${alpha})`;
 }

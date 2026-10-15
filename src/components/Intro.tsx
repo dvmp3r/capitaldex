@@ -7,8 +7,7 @@ import { rarityLabel } from "../game/rarity";
 import { RARITIES } from "../game/types";
 import { t } from "../i18n";
 import { useGame } from "../store/gameStore";
-import type { MachinePhase } from "./GachaMachine";
-import { GachaStage } from "./GachaStage";
+import { GachaStage, type StagePhase } from "./GachaStage";
 
 /**
  * Primera vez: pantalla a toda página con la máquina en el centro y las carteras gratis.
@@ -23,7 +22,7 @@ export function Intro() {
   const lastPull = useGame((s) => s.lastPull);
   const openPack = useGame((s) => s.openPack);
   const [revealKey, setRevealKey] = useState(0);
-  const [phase, setPhase] = useState<MachinePhase>("idle");
+  const [phase, setPhase] = useState<StagePhase>("idle");
   const [closing, setClosing] = useState(false);
 
   if (introSeen) return null;
@@ -44,7 +43,7 @@ export function Intro() {
     window.setTimeout(() => setSetting("introSeen", true), 420);
   };
 
-  const primary = "h-14 rounded-xl bg-white px-6 text-lg font-bold text-brand-strong shadow-[0_12px_32px_-12px_oklch(0_0_0/0.5)] transition hover:brightness-95 active:scale-[0.98] disabled:opacity-60";
+  const primary = "h-14 rounded-xl bg-white px-6 text-lg font-bold text-bg shadow-[0_16px_40px_-14px_oklch(1_0_0/0.45)] transition hover:brightness-95 active:scale-[0.98] disabled:opacity-60";
   const secondary = "h-14 rounded-xl border border-white/40 px-5 text-base font-semibold text-white transition hover:bg-white/10 disabled:opacity-40";
 
   return (
@@ -110,7 +109,7 @@ export function Intro() {
           {lastPull && phase === "revealed" && (
             <p key={`m-${revealKey}`} className="rise mt-4 text-base">
               {lastPull.rarity === "legendaria" ? (
-                <span className="font-bold text-legendaria">{t("gacha.legendary")}</span>
+                <span className="font-bold text-legendaria-ink">{t("gacha.legendary")}</span>
               ) : lastPull.isNew ? (
                 <span className="font-bold">{t("gacha.newCompany")}: {lastPull.company.name}</span>
               ) : (

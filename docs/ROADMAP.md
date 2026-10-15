@@ -28,6 +28,7 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [x] Animación de apertura con variante legendaria (15-oct-2026)
 - [x] Máquina de cápsulas: el color de la cápsula anuncia la rareza; sonidos por fase (15-oct-2026)
 - [x] Introducción a toda pantalla para la primera vez, con las tres carteras gratis (15-oct-2026)
+- [x] Tema oscuro definitivo y máquina v2 con animaciones por fases (Web Animations API) (15-oct-2026)
 - [x] Tutorial de 3 tiradas gratis: pistas contextuales en las primeras carteras (15-oct-2026)
 - [x] Pantalla de estadísticas (tiradas, tiempo jugado, mejor tirada) (15-oct-2026)
 - [ ] Despliegue en Cloudflare Pages con dominio provisional

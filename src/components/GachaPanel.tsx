@@ -7,8 +7,7 @@ import { RARITIES, type Rarity } from "../game/types";
 import { t } from "../i18n";
 import { useGame } from "../store/gameStore";
 import { RARITY_INK } from "./CompanyCard";
-import type { MachinePhase } from "./GachaMachine";
-import { GachaStage } from "./GachaStage";
+import { GachaStage, type StagePhase } from "./GachaStage";
 
 export function GachaPanel() {
   const capital = useGame((s) => s.capital);
@@ -16,7 +15,7 @@ export function GachaPanel() {
   const lastPull = useGame((s) => s.lastPull);
   const openPack = useGame((s) => s.openPack);
   const [revealKey, setRevealKey] = useState(0);
-  const [phase, setPhase] = useState<MachinePhase>("idle");
+  const [phase, setPhase] = useState<StagePhase>("idle");
 
   const cost = pullCost(gacha.pulls);
   const freeLeft = Math.max(0, FREE_PULLS - gacha.pulls);
