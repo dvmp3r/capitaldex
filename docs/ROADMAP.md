@@ -34,7 +34,7 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [x] Bucle idle: titulares (mejoras permanentes por sector, región, rareza, globales, bróker, mesa y noticias) y noticias de última hora temporales (15-oct-2026)
 - [x] Universo ampliado a 1 117 empresas con los índices completos de 12 mercados; colección paginada (15-oct-2026)
 - [x] Máquina de bolas con ilustración CC0 de Openclipart (cuerpo rojo clásico) y bolas con física propia; manivela animada y cápsula de la rareza saliendo por la boca (15-oct-2026)
-- [x] Máquina en 3D estilizado con three.js (sin reflejos ni refracción, barata): bolas con física en la cúpula, manivela, vitrina de salida donde cae la cápsula del color de la rareza y se abre; la 2D queda como respaldo sin WebGL (15-oct-2026)
+- [x] Máquina en 3D estilizado con three.js (sin reflejos ni refracción, barata), según las referencias de Jorge: caja gashapon roja con vitrina cuadrada, placa cromada con mando grande y boca en arco debajo, cápsulas de dos mitades (color de la rareza + transparente) con física; la cápsula sale por la boca y cae a la bandeja del pie, donde se abre. La ilustración 2D queda como respaldo sin WebGL (15-oct-2026)
 - [x] Sonidos por acción y rareza: clic de Operar, caja registradora al comprar titular, alerta y acierto de noticia, arpegio de hito, fanfarria legendaria (15-oct-2026)
 - [ ] Añadir Nikkei 225 e Ibovespa (Wikipedia no tiene tabla de componentes; buscar otra fuente)
 - [ ] Validar partidas en el servidor para que el ranking no se pueda inflar desde el navegador

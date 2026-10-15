@@ -6,12 +6,15 @@ const run = (sim: GachaSim, seconds: number) => {
 };
 
 describe("simulación de la máquina", () => {
-  it("las cápsulas quedan dentro de la cúpula y en reposo", () => {
+  it("las cápsulas quedan dentro de la vitrina y en reposo", () => {
     const sim = new GachaSim();
     run(sim, 2);
     for (const c of sim.caps) {
-      const d = Math.hypot(c.p.x - GEOM.dome.c.x, c.p.y - GEOM.dome.c.y, c.p.z - GEOM.dome.c.z);
-      expect(d).toBeLessThanOrEqual(GEOM.dome.r - GEOM.capR + 1e-6);
+      const { min, max } = GEOM.chamber;
+      for (const k of ["x", "y", "z"] as const) {
+        expect(c.p[k]).toBeGreaterThanOrEqual(min[k] + GEOM.capR - 1e-6);
+        expect(c.p[k]).toBeLessThanOrEqual(max[k] - GEOM.capR + 1e-6);
+      }
       expect(Math.hypot(c.v.x, c.v.y, c.v.z)).toBeLessThan(0.5);
     }
   });

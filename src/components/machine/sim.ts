@@ -38,22 +38,31 @@ export interface Particle {
   size: number;
 }
 
+/** Vitrina (caja) donde viven las cápsulas; `dome` es su esfera envolvente, para la ilustración 2D de respaldo. */
+const CHAMBER = { min: { x: -0.93, y: 2.08, z: -0.66 }, max: { x: 0.93, y: 3.5, z: 0.66 } };
 export const GEOM = {
-  dome: { c: { x: 0, y: 2.95, z: 0 }, r: 0.95 },
+  chamber: CHAMBER,
+  dome: {
+    c: { x: 0, y: (CHAMBER.min.y + CHAMBER.max.y) / 2, z: 0 },
+    r: Math.hypot(CHAMBER.max.x, (CHAMBER.max.y - CHAMBER.min.y) / 2, CHAMBER.max.z),
+  },
   capR: 0.15,
   dropR: 0.19,
-  /** Punto donde aparece la cápsula que cae (dentro de la ventana) y altura de reposo en la bandeja. */
-  spawn: { x: 0.55, y: 1.5, z: 1.07 }, // dentro de la ventana de cristal, delante del frontal (z = 0.85)
-  trayY: 0.55,
+  /** La cápsula aparece dentro de la boca de salida, rueda hacia delante y cae a la bandeja del pie. */
+  spawn: { x: 0, y: 0.95, z: 0.55 },
+  dropVel: { x: 0, y: -0.2, z: 1.7 },
+  dropZMax: 1.08,
+  trayY: 0.28,
   crankDuration: 0.75,
   stirDuration: 0.85,
 };
 
 const GRAVITY = 9;
-const CAP_COUNT = 58;
+const CAP_COUNT = 64;
+/** Mezcla decorativa de la vitrina (más colorida que las probabilidades reales, que se muestran aparte). */
 const DOME_MIX: Rarity[] = [
-  "legendaria", "epica", "rara", "rara", "rara", "poco_comun", "poco_comun", "poco_comun", "poco_comun", "poco_comun", "poco_comun",
-  "comun", "comun", "comun", "comun", "comun", "comun", "comun", "comun", "comun", "comun", "comun", "comun", "comun",
+  "legendaria", "epica", "rara", "rara", "poco_comun", "poco_comun", "comun", "comun", "comun",
+  "epica", "rara", "poco_comun", "comun", "legendaria", "rara", "poco_comun", "comun", "comun",
 ];
 
 const v3 = (x = 0, y = 0, z = 0): Vec3 => ({ x, y, z });
@@ -78,13 +87,12 @@ export class GachaSim {
   }
 
   private seedCapsules() {
-    const { c, r } = GEOM.dome;
+    const { min, max } = GEOM.chamber;
+    const r = GEOM.capR;
     this.caps = [];
     for (let i = 0; i < CAP_COUNT; i++) {
-      const a = this.rng() * Math.PI * 2;
-      const d = Math.sqrt(this.rng()) * (r - GEOM.capR) * 0.8;
       this.caps.push({
-        p: v3(c.x + Math.cos(a) * d, c.y - 0.1 + this.rng() * 0.8, c.z + Math.sin(a) * d),
+        p: v3(min.x + r + this.rng() * (max.x - min.x - 2 * r), min.y + r + this.rng() * (max.y - min.y - 2 * r), min.z + r + this.rng() * (max.z - min.z - 2 * r)),
         v: v3(),
         rot: v3(this.rng() * 6, this.rng() * 6, this.rng() * 6),
         rarity: DOME_MIX[i % DOME_MIX.length],
@@ -113,8 +121,8 @@ export class GachaSim {
       active: true,
       rarity,
       p: { ...GEOM.spawn },
-      v: v3((this.rng() - 0.5) * 0.3, -0.6, 0),
-      scale: v3(0.6, 0.6, 0.6),
+      v: v3(GEOM.dropVel.x + (this.rng() - 0.5) * 0.2, GEOM.dropVel.y, GEOM.dropVel.z),
+      scale: v3(0.7, 0.7, 0.7),
       bounces: 0,
       settled: false,
       lid: 0,
@@ -153,7 +161,7 @@ export class GachaSim {
     this.capsule = {
       active: true,
       rarity,
-      p: v3(GEOM.spawn.x, GEOM.trayY + GEOM.dropR, GEOM.spawn.z),
+      p: v3(GEOM.spawn.x, GEOM.trayY + GEOM.dropR, GEOM.dropZMax),
       v: v3(),
       scale: v3(1, 1, 1),
       bounces: 2,
@@ -224,7 +232,8 @@ export class GachaSim {
   }
 
   private stepCapsules(dt: number) {
-    const { c, r: R } = GEOM.dome;
+    const { min } = GEOM.chamber;
+    const c = GEOM.dome.c;
     const r = GEOM.capR;
     const stirring = this.stir > 0;
     for (const b of this.caps) {
@@ -242,15 +251,13 @@ export class GachaSim {
       b.p.x += b.v.x * dt;
       b.p.y += b.v.y * dt;
       b.p.z += b.v.z * dt;
-      // Pared interior de la cúpula
-      this.constrainToDome(b, true);
-      const d = Math.hypot(b.p.x - c.x, b.p.y - c.y, b.p.z - c.z);
-      const limit = R - r;
+      // Paredes de la vitrina
+      this.constrainToChamber(b, true);
       // rodar: giro proporcional a la velocidad
       b.rot.x += (b.v.z / r) * dt;
       b.rot.z -= (b.v.x / r) * dt;
-      // reposo
-      if (!stirring && Math.hypot(b.v.x, b.v.y, b.v.z) < 0.05 && d > limit - 0.01) {
+      // reposo (sobre el suelo o sobre otra cápsula quieta)
+      if (!stirring && Math.hypot(b.v.x, b.v.y, b.v.z) < 0.05 && b.p.y < min.y + r + 0.01) {
         b.v.x = b.v.y = b.v.z = 0;
       }
     }
@@ -288,33 +295,24 @@ export class GachaSim {
         }
       }
     }
-    for (const b of this.caps) this.constrainToDome(b, false);
+    for (const b of this.caps) this.constrainToChamber(b, false);
   }
 
-  /** Mantiene la cápsula dentro de la cúpula; con `bounce` refleja la velocidad al chocar. */
-  private constrainToDome(b: Capsule, bounce: boolean) {
-    const { c, r: R } = GEOM.dome;
-    const limit = R - GEOM.capR;
-    const nx = b.p.x - c.x;
-    const ny = b.p.y - c.y;
-    const nz = b.p.z - c.z;
-    const d = Math.hypot(nx, ny, nz) || 1e-6;
-    if (d <= limit) return;
-    const ux = nx / d;
-    const uy = ny / d;
-    const uz = nz / d;
-    b.p.x = c.x + ux * limit;
-    b.p.y = c.y + uy * limit;
-    b.p.z = c.z + uz * limit;
-    if (!bounce) return;
-    const vn = b.v.x * ux + b.v.y * uy + b.v.z * uz;
-    if (vn > 0) {
-      const e = 0.25;
-      b.v.x -= ux * vn * (1 + e);
-      b.v.y -= uy * vn * (1 + e);
-      b.v.z -= uz * vn * (1 + e);
-      b.v.x *= 0.96;
-      b.v.z *= 0.96;
+  /** Mantiene la cápsula dentro de la vitrina; con `bounce` refleja la velocidad al chocar con una pared. */
+  private constrainToChamber(b: Capsule, bounce: boolean) {
+    const { min, max } = GEOM.chamber;
+    const r = GEOM.capR;
+    const e = 0.25;
+    const axes = ["x", "y", "z"] as const;
+    for (const k of axes) {
+      if (b.p[k] < min[k] + r) {
+        b.p[k] = min[k] + r;
+        if (bounce && b.v[k] < 0) b.v[k] = -b.v[k] * e;
+        if (bounce && k === "y") { b.v.x *= 0.94; b.v.z *= 0.94; }
+      } else if (b.p[k] > max[k] - r) {
+        b.p[k] = max[k] - r;
+        if (bounce && b.v[k] > 0) b.v[k] = -b.v[k] * e;
+      }
     }
   }
 
@@ -327,11 +325,17 @@ export class GachaSim {
     d.p.z += d.v.z * dt;
     // crece al salir de la boca
     d.scale.x = d.scale.y = d.scale.z = Math.min(1, d.scale.x + dt * 3);
+    // tope delantero de la bandeja
+    if (d.p.z > GEOM.dropZMax) {
+      d.p.z = GEOM.dropZMax;
+      d.v.z = -Math.abs(d.v.z) * 0.25;
+    }
     if (d.p.y <= rest) {
       d.p.y = rest;
       if (Math.abs(d.v.y) > 0.9 && d.bounces < 3) {
         d.v.y = -d.v.y * 0.42;
         d.v.x *= 0.6;
+        d.v.z *= 0.55;
         d.bounces++;
         const hit = Math.min(1, Math.abs(d.v.y) / 3);
         d.scale.y = 1 - 0.3 * hit;

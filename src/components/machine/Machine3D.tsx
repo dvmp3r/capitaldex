@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { RARITY_HEX } from "../../game/rarity";
 import type { Rarity } from "../../game/types";
 import type { MachineHandle } from "./Machine2D";
@@ -23,10 +24,11 @@ const MAX_PARTICLES = 40;
 const IDLE_FPS = 24;
 
 /**
- * Máquina de cápsulas en 3D estilizado (three.js sin entorno ni refracción: barata de dibujar).
- * La geometría sigue a GEOM de sim.ts: cúpula en (0, 2.95) r 0.95, boca de salida en x 0.55, bandeja en y 0.55.
- * Cuando no hay animación dibuja a 24 fps; con la pestaña oculta la simulación sigue por intervalo
- * para que las promesas de fase se resuelvan igualmente.
+ * Máquina gashapon en 3D estilizado (three.js plano, sin entorno ni refracción).
+ * Caja roja con vitrina de cristal arriba, placa cromada delante con el mando grande y la boca de
+ * salida debajo; las cápsulas son de dos mitades (color de la rareza + transparente).
+ * Geometría acorde a GEOM de sim.ts. En reposo dibuja a 24 fps; con la pestaña oculta la
+ * simulación sigue por intervalo para que las fases terminen.
  */
 export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ dimmed = false, className = "" }, ref) {
   const sim = useMemo(() => new GachaSim(), []);
@@ -49,38 +51,35 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 1.1;
     el.appendChild(renderer.domElement);
-    renderer.domElement.style.display = "block";
-    renderer.domElement.style.width = "100%";
-    renderer.domElement.style.height = "100%";
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(27, 5 / 7, 0.1, 30);
-    const camBase = new THREE.Vector3(0, 2.6, 9.6);
-    const lookAt = new THREE.Vector3(0, 2.05, 0);
+    const camera = new THREE.PerspectiveCamera(26, 5 / 7, 0.1, 30);
+    const camBase = new THREE.Vector3(1.0, 3.0, 9.6);
+    const lookAt = new THREE.Vector3(0, 2.0, 0);
     camera.position.copy(camBase);
     camera.lookAt(lookAt);
 
-    // Luces: cielo/suelo + un foco cálido + relleno frío. Sin sombras.
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x2a2a2e, 1.1));
-    const key = new THREE.DirectionalLight(0xfff1dc, 2.2);
-    key.position.set(3, 6, 5);
+    // Luces suaves, sin sombras: aspecto de ilustración plana.
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x33333a, 1.25));
+    const key = new THREE.DirectionalLight(0xfff3e0, 1.9);
+    key.position.set(4, 7, 6);
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0x9fb8ff, 0.6);
-    fill.position.set(-4, 2, 3);
+    const fill = new THREE.DirectionalLight(0xa9c2ff, 0.5);
+    fill.position.set(-5, 3, 4);
     scene.add(fill);
-    const rim = new THREE.DirectionalLight(0xffffff, 0.8);
-    rim.position.set(0, 4, -6);
-    scene.add(rim);
 
-    // Materiales (Phong: barato y con brillo de "juguete")
-    const red = new THREE.MeshPhongMaterial({ color: 0xc8302a, specular: 0x7a3a36, shininess: 60 });
-    const darkRed = new THREE.MeshPhongMaterial({ color: 0x7a1b17, specular: 0x331010, shininess: 30 });
-    const chrome = new THREE.MeshPhongMaterial({ color: 0xcfd3d8, specular: 0xffffff, shininess: 140 });
-    const black = new THREE.MeshPhongMaterial({ color: 0x1b1b1f, specular: 0x333333, shininess: 25 });
-    const glass = new THREE.MeshPhongMaterial({ color: 0xdfe9ff, specular: 0xffffff, shininess: 160, transparent: true, opacity: 0.16, depthWrite: false });
-    const glassRim = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, side: THREE.BackSide, depthWrite: false });
+    // Materiales
+    const red = new THREE.MeshPhongMaterial({ color: 0xd3362c, specular: 0x5a2a28, shininess: 35 });
+    const redDark = new THREE.MeshPhongMaterial({ color: 0x9c231c, specular: 0x331010, shininess: 20 });
+    const chrome = new THREE.MeshPhongMaterial({ color: 0xd9dde3, specular: 0xffffff, shininess: 120 });
+    const steel = new THREE.MeshPhongMaterial({ color: 0xb3b9c2, specular: 0xffffff, shininess: 90 });
+    const dark = new THREE.MeshPhongMaterial({ color: 0x17171b, specular: 0x222222, shininess: 20 });
+    const white = new THREE.MeshPhongMaterial({ color: 0xf2f2f2, specular: 0x666666, shininess: 40 });
+    const glass = new THREE.MeshPhongMaterial({ color: 0xdfeaff, specular: 0xffffff, shininess: 150, transparent: true, opacity: 0.14, depthWrite: false });
+    const glassEdge = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, side: THREE.BackSide, depthWrite: false });
+    const clear = new THREE.MeshPhongMaterial({ color: 0xf4f8ff, specular: 0xffffff, shininess: 120, transparent: true, opacity: 0.3, depthWrite: false });
 
     const machine = new THREE.Group();
     scene.add(machine);
@@ -90,96 +89,120 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       machine.add(m);
       return m;
     };
+    const { min: cm, max: cM } = GEOM.chamber;
+    const W = 2.12; // ancho del cuerpo
+    const D = 1.56; // fondo del cuerpo
+    const FRONT = D / 2; // z de la cara delantera
 
-    // Pie y cuerpo
-    add(new THREE.CylinderGeometry(0.95, 1.05, 0.5, 48), black, 0, 0.25);
-    add(new THREE.CylinderGeometry(0.9, 0.95, 0.08, 48), chrome, 0, 0.54);
-    add(new THREE.CylinderGeometry(0.82, 0.9, 1.42, 48), red, 0, 1.29);
-    add(new THREE.CylinderGeometry(0.9, 0.82, 0.1, 48), darkRed, 0, 2.03);
-    add(new THREE.TorusGeometry(0.92, 0.045, 12, 64), chrome, 0, 2.08).rotation.x = Math.PI / 2;
+    // Pie con bandeja delante (la cápsula cae ahí)
+    add(new RoundedBoxGeometry(W + 0.16, 0.28, D + 0.9, 3, 0.06), dark, 0, 0.14, 0.45);
+    add(new RoundedBoxGeometry(W + 0.1, 0.05, D + 0.84, 2, 0.02), steel, 0, 0.285, 0.45);
+    // Cuerpo rojo inferior
+    add(new RoundedBoxGeometry(W, 1.78, D, 4, 0.1), red, 0, 1.19, 0);
+    // Marco entre cuerpo y vitrina
+    add(new RoundedBoxGeometry(W + 0.06, 0.1, D + 0.06, 2, 0.03), redDark, 0, cm.y - 0.05, 0);
+    // Vitrina de cristal
+    const chamberH = cM.y - cm.y;
+    const chamberY = (cm.y + cM.y) / 2;
+    const chamber = new THREE.Mesh(new RoundedBoxGeometry(W - 0.1, chamberH, D - 0.1, 3, 0.08), glass);
+    chamber.position.set(0, chamberY, 0);
+    chamber.renderOrder = 10;
+    machine.add(chamber);
+    const chamberEdge = new THREE.Mesh(new RoundedBoxGeometry(W - 0.08, chamberH + 0.02, D - 0.08, 3, 0.09), glassEdge);
+    chamberEdge.position.copy(chamber.position);
+    chamberEdge.renderOrder = 9;
+    machine.add(chamberEdge);
+    // Suelo oscuro de la vitrina y esquinas (para que el cristal se lea como caja)
+    add(new THREE.BoxGeometry(W - 0.12, 0.04, D - 0.12), dark, 0, cm.y - 0.02, 0);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.BoxGeometry(0.05, chamberH, 0.05), chrome, sx * (W / 2 - 0.06), chamberY, sz * (D / 2 - 0.06));
+    // Tapa superior
+    add(new RoundedBoxGeometry(W + 0.06, 0.34, D + 0.06, 3, 0.09), red, 0, cM.y + 0.17, 0);
+    add(new RoundedBoxGeometry(W - 0.5, 0.16, 0.06, 2, 0.03), white, 0, cM.y + 0.19, FRONT + 0.02); // rótulo
+    add(new THREE.CylinderGeometry(0.22, 0.26, 0.1, 24), chrome, 0, cM.y + 0.39, 0);
 
-    // Cúpula de cristal y remate
-    const { c: dc, r: dr } = GEOM.dome;
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(dr, 48, 32), glass);
-    dome.position.set(dc.x, dc.y, dc.z);
-    dome.renderOrder = 10;
-    machine.add(dome);
-    const domeRim = new THREE.Mesh(new THREE.SphereGeometry(dr * 1.01, 48, 32), glassRim);
-    domeRim.position.copy(dome.position);
-    domeRim.renderOrder = 9;
-    machine.add(domeRim);
-    add(new THREE.CylinderGeometry(0.2, 0.26, 0.12, 24), chrome, 0, dc.y + dr - 0.02);
-    add(new THREE.SphereGeometry(0.11, 20, 14), red, 0, dc.y + dr + 0.1);
+    // Placa cromada delantera con el mando y la boca
+    const plateY = 1.22;
+    add(new RoundedBoxGeometry(0.98, 1.4, 0.06, 2, 0.03), steel, 0, plateY, FRONT + 0.01);
+    // Ranura de monedas y cerradura
+    add(new RoundedBoxGeometry(0.34, 0.16, 0.04, 2, 0.02), white, -0.72, 1.78, FRONT + 0.015);
+    add(new THREE.BoxGeometry(0.12, 0.03, 0.03), dark, -0.72, 1.78, FRONT + 0.04);
+    const lock = add(new THREE.CylinderGeometry(0.08, 0.08, 0.05, 20), chrome, 0.72, 1.78, FRONT + 0.03);
+    lock.rotation.x = Math.PI / 2;
+    add(new THREE.BoxGeometry(0.02, 0.1, 0.03), dark, 0.72, 1.78, FRONT + 0.06);
 
-    // Manivela (gira sobre z; mira al frente)
+    // Mando: anillo, disco y asa; gira sobre z
+    const knobY = 1.55;
+    const knobZ = FRONT + 0.06;
+    add(new THREE.TorusGeometry(0.4, 0.045, 10, 48), chrome, 0, knobY, knobZ);
     const knob = new THREE.Group();
-    knob.position.set(-0.3, 1.45, 0.86);
-    const knobDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.12, 32), chrome);
-    knobDisc.rotation.x = Math.PI / 2;
-    knob.add(knobDisc);
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.12, 0.08), black);
-    bar.position.z = 0.1;
-    knob.add(bar);
-    const barCap = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.1, 16), chrome);
-    barCap.rotation.x = Math.PI / 2;
-    barCap.position.set(0, 0, 0.15);
-    knob.add(barCap);
+    knob.position.set(0, knobY, knobZ);
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.35, 0.1, 40), white);
+    disc.rotation.x = Math.PI / 2;
+    knob.add(disc);
+    const handle = new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.14, 0.1, 2, 0.04), redDark);
+    handle.position.z = 0.09;
+    knob.add(handle);
+    const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.06, 12), dark);
+    pin.rotation.x = Math.PI / 2;
+    pin.position.z = 0.15;
+    knob.add(pin);
     machine.add(knob);
-    add(new THREE.CylinderGeometry(0.26, 0.26, 0.06, 32), darkRed, -0.3, 1.45, 0.84).rotation.x = Math.PI / 2;
 
-    // Boca de salida: hueco oscuro, bandeja y ventanita
-    // (vitrina estrecha con fondo oscuro, marco cromado y cristal delante; la cápsula cae dentro)
-    const mouthX = GEOM.spawn.x;
-    const mouthY = (GEOM.trayY + 1.62) / 2;
-    const mouthH = 1.62 - GEOM.trayY;
-    add(new THREE.BoxGeometry(0.64, mouthH, 0.42), black, mouthX, mouthY, 0.66);
-    add(new THREE.BoxGeometry(0.72, 0.07, 0.5), chrome, mouthX, GEOM.trayY - 0.035, 1.04);
-    add(new THREE.BoxGeometry(0.72, 0.05, 0.5), chrome, mouthX, 1.62 + 0.025, 1.04);
-    add(new THREE.BoxGeometry(0.04, mouthH, 0.44), chrome, mouthX - 0.34, mouthY, 1.06);
-    add(new THREE.BoxGeometry(0.04, mouthH, 0.44), chrome, mouthX + 0.34, mouthY, 1.06);
-    const windowPane = new THREE.Mesh(new THREE.BoxGeometry(0.64, mouthH, 0.02), glass);
-    windowPane.position.set(mouthX, mouthY, 1.28);
-    windowPane.renderOrder = 11;
-    machine.add(windowPane);
+    // Boca de salida: hueco oscuro con arco, bajo el mando
+    const mouthY = 0.85;
+    add(new THREE.BoxGeometry(0.62, 0.5, 0.5), dark, 0, mouthY - 0.1, FRONT - 0.2);
+    const arch = add(new THREE.CylinderGeometry(0.31, 0.31, 0.5, 24, 1, false, 0, Math.PI), dark, 0, mouthY + 0.15, FRONT - 0.2);
+    arch.rotation.x = Math.PI / 2;
+    arch.rotation.z = Math.PI / 2;
+    add(new THREE.BoxGeometry(0.66, 0.04, 0.06), chrome, 0, mouthY - 0.35, FRONT + 0.02); // labio
 
-    // Sombra de contacto: círculo degradado dibujado en un lienzo
+    // Sombra de contacto
     const shadowTex = (() => {
       const cv = document.createElement("canvas");
       cv.width = cv.height = 128;
       const g = cv.getContext("2d")!;
       const grad = g.createRadialGradient(64, 64, 10, 64, 64, 64);
-      grad.addColorStop(0, "rgba(0,0,0,0.55)");
+      grad.addColorStop(0, "rgba(0,0,0,0.6)");
       grad.addColorStop(1, "rgba(0,0,0,0)");
       g.fillStyle = grad;
       g.fillRect(0, 0, 128, 128);
       return new THREE.CanvasTexture(cv);
     })();
-    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 3.2), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 3.6), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
     shadow.rotation.x = -Math.PI / 2;
-    shadow.position.y = 0.005;
+    shadow.position.set(0, 0.004, 0.4);
     scene.add(shadow);
 
-    // Cápsulas de la cúpula: una malla instanciada con color por instancia
-    const capGeo = new THREE.SphereGeometry(GEOM.capR, 18, 12);
-    const capMat = new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0xffffff, shininess: 90 });
-    const caps = new THREE.InstancedMesh(capGeo, capMat, sim.caps.length);
-    caps.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    sim.caps.forEach((cp, i) => caps.setColorAt(i, RARITY_COLOR[cp.rarity]));
-    machine.add(caps);
+    // Cápsulas de la vitrina: dos mallas instanciadas (mitad de color + mitad transparente)
+    const r = GEOM.capR;
+    // La mitad de color es algo más de media esfera para que el color domine.
+    const SPLIT = Math.PI * 0.42;
+    const lowerGeo = new THREE.SphereGeometry(r, 16, 8, 0, Math.PI * 2, SPLIT, Math.PI - SPLIT);
+    const upperGeo = new THREE.SphereGeometry(r * 0.985, 16, 8, 0, Math.PI * 2, 0, SPLIT);
+    const capMat = new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x999999, shininess: 60 });
+    const capsLower = new THREE.InstancedMesh(lowerGeo, capMat, sim.caps.length);
+    const capsUpper = new THREE.InstancedMesh(upperGeo, clear, sim.caps.length);
+    capsLower.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    capsUpper.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    capsUpper.renderOrder = 5;
+    sim.caps.forEach((cp, i) => capsLower.setColorAt(i, RARITY_COLOR[cp.rarity]));
+    machine.add(capsLower, capsUpper);
 
-    // Cápsula que cae: dos mitades, luz propia
+    // Cápsula que cae: mitad inferior de color, tapa transparente que se abre, luz propia
     const drop = new THREE.Group();
     drop.visible = false;
-    const dropMat = new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0xffffff, shininess: 100, emissive: 0x000000 });
-    const lower = new THREE.Mesh(new THREE.SphereGeometry(GEOM.dropR, 24, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), dropMat);
-    const upper = new THREE.Mesh(new THREE.SphereGeometry(GEOM.dropR, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), dropMat);
-    const lowerCap = new THREE.Mesh(new THREE.CircleGeometry(GEOM.dropR, 24), dropMat);
+    const dropMat = new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0xffffff, shininess: 90, emissive: 0x000000 });
+    const dR = GEOM.dropR;
+    const lower = new THREE.Mesh(new THREE.SphereGeometry(dR, 28, 14, 0, Math.PI * 2, SPLIT, Math.PI - SPLIT), dropMat);
+    const lowerCap = new THREE.Mesh(new THREE.CircleGeometry(dR, 28), dropMat);
     lowerCap.rotation.x = -Math.PI / 2;
-    const upperCap = new THREE.Mesh(new THREE.CircleGeometry(GEOM.dropR, 24), dropMat);
-    upperCap.rotation.x = Math.PI / 2;
-    upper.add(upperCap);
+    lowerCap.position.y = dR * Math.cos(SPLIT);
+    lowerCap.scale.setScalar(Math.sin(SPLIT));
+    const upper = new THREE.Mesh(new THREE.SphereGeometry(dR, 28, 14, 0, Math.PI * 2, 0, SPLIT), clear.clone());
+    upper.renderOrder = 6;
     drop.add(lower, lowerCap, upper);
-    const dropLight = new THREE.PointLight(0xffffff, 0, 2.5, 2);
+    const dropLight = new THREE.PointLight(0xffffff, 0, 3, 2);
+    dropLight.position.y = 0.2;
     drop.add(dropLight);
     machine.add(drop);
 
@@ -191,21 +214,22 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
 
     const tmp = new THREE.Object3D();
     const tmpColor = new THREE.Color();
+    const whiteC = new THREE.Color(0xffffff);
 
     const sync = () => {
-      // bolas de la cúpula
       for (let i = 0; i < sim.caps.length; i++) {
         const cp = sim.caps[i];
         tmp.position.set(cp.p.x, cp.p.y, cp.p.z);
-        tmp.rotation.set(cp.rot.x, cp.rot.y, cp.rot.z);
+        tmp.rotation.set(cp.rot.x * 0.5, cp.rot.y, cp.rot.z * 0.5);
         tmp.scale.setScalar(1);
         tmp.updateMatrix();
-        caps.setMatrixAt(i, tmp.matrix);
+        capsLower.setMatrixAt(i, tmp.matrix);
+        capsUpper.setMatrixAt(i, tmp.matrix);
       }
-      caps.instanceMatrix.needsUpdate = true;
-      // manivela
+      capsLower.instanceMatrix.needsUpdate = true;
+      capsUpper.instanceMatrix.needsUpdate = true;
       knob.rotation.z = -sim.crank.angle;
-      // cápsula de la rareza
+
       const d = sim.capsule;
       drop.visible = d.active;
       if (d.active) {
@@ -213,14 +237,13 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
         drop.scale.set(d.scale.x, d.scale.y, d.scale.z);
         const col = RARITY_COLOR[d.rarity];
         dropMat.color.copy(col);
-        dropMat.emissive.copy(col).multiplyScalar(0.25 + d.glow * 0.9);
+        dropMat.emissive.copy(col).multiplyScalar(0.2 + d.glow * 0.9);
         dropLight.color.copy(col);
-        dropLight.intensity = 0.8 + d.glow * 5;
-        upper.position.y = d.lid * 0.42;
-        upper.rotation.x = -d.lid * 0.9;
-        upper.position.z = d.lid * 0.12;
+        dropLight.intensity = 0.6 + d.glow * 6;
+        upper.position.y = d.lid * 0.4;
+        upper.position.z = d.lid * 0.1;
+        upper.rotation.x = -d.lid * 1.1;
       }
-      // partículas
       const n = Math.min(MAX_PARTICLES, sim.particles.length);
       for (let i = 0; i < n; i++) {
         const pt = sim.particles[i];
@@ -233,7 +256,7 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       parts.count = n;
       if (n) {
         parts.instanceMatrix.needsUpdate = true;
-        (parts.material as THREE.MeshBasicMaterial).color.copy(tmpColor.copy(RARITY_COLOR[d.rarity]).lerp(new THREE.Color(0xffffff), 0.4));
+        (parts.material as THREE.MeshBasicMaterial).color.copy(tmpColor.copy(RARITY_COLOR[d.rarity]).lerp(whiteC, 0.4));
       }
     };
 
@@ -261,18 +284,16 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       last = now;
       lastFrame = now;
       sim.step(dt);
-      // En reposo, 24 fps bastan.
       if (!sim.busy() && now - lastDraw < 1000 / IDLE_FPS) return;
       lastDraw = now;
       const t = now / 1000;
-      camera.position.set(camBase.x + Math.sin(t * 0.35) * 0.18, camBase.y + Math.sin(t * 0.5) * 0.05, camBase.z);
+      camera.position.set(camBase.x + Math.sin(t * 0.3) * 0.2, camBase.y + Math.sin(t * 0.45) * 0.06, camBase.z);
       camera.lookAt(lookAt);
       sync();
       renderer.render(scene, camera);
     };
     raf = requestAnimationFrame(frame);
 
-    // Con la pestaña oculta no hay rAF: la simulación avanza por intervalo para que las fases terminen.
     const ticker = window.setInterval(() => {
       const now = performance.now();
       if (now - lastFrame > 120) {
