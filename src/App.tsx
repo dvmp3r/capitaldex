@@ -1,3 +1,4 @@
+import { LayoutGrid, Newspaper, Trophy, Globe } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Achievements } from "./components/Achievements";
 import { Collection } from "./components/Collection";
@@ -10,6 +11,7 @@ import { OfflineBanner } from "./components/OfflineBanner";
 import { Ranking } from "./components/Ranking";
 import { Toasts } from "./components/Toasts";
 import { TICK_MS } from "./game/balance";
+import { fmtCapital } from "./game/format";
 import { t } from "./i18n";
 import { useGame } from "./store/gameStore";
 
@@ -38,8 +40,38 @@ export default function App() {
     };
   }, [tick]);
 
-  const tabCls = (active: boolean) =>
-    `h-9 rounded-lg px-4 text-sm font-semibold transition-colors ${active ? "bg-ink text-bg" : "text-muted hover:bg-surface hover:text-ink"}`;
+  // Con la pestaña del navegador en segundo plano, el título muestra el capital (como hacen los idle clásicos).
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      document.title = document.hidden ? `${fmtCapital(useGame.getState().capital)} · CapitalDex` : "CapitalDex";
+    }, 2000);
+    return () => {
+      window.clearInterval(id);
+      document.title = "CapitalDex";
+    };
+  }, []);
+
+  // Barra espaciadora: abrir cartera (si no se está escribiendo en un campo).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "Space" || e.repeat) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.tagName === "BUTTON" || el.isContentEditable)) return;
+      const s = useGame.getState();
+      if (!s.settings.introSeen) return;
+      e.preventDefault();
+      s.openPack();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: "collection", label: t("tabs.collection"), icon: <LayoutGrid size={15} aria-hidden="true" /> },
+    { id: "market", label: t("tabs.market"), icon: <Newspaper size={15} aria-hidden="true" /> },
+    { id: "achievements", label: t("tabs.achievements"), icon: <Trophy size={15} aria-hidden="true" /> },
+    { id: "ranking", label: t("tabs.ranking"), icon: <Globe size={15} aria-hidden="true" /> },
+  ];
 
   return (
     <div className="min-h-full">
@@ -53,11 +85,13 @@ export default function App() {
           <GachaPanel />
         </div>
         <div className="min-w-0">
-          <div className="mb-4 flex gap-1 border-b border-line pb-3" role="tablist">
-            <button role="tab" aria-selected={tab === "collection"} className={tabCls(tab === "collection")} onClick={() => setTab("collection")}>{t("tabs.collection")}</button>
-            <button role="tab" aria-selected={tab === "market"} className={tabCls(tab === "market")} onClick={() => setTab("market")}>{t("tabs.market")}</button>
-            <button role="tab" aria-selected={tab === "achievements"} className={tabCls(tab === "achievements")} onClick={() => setTab("achievements")}>{t("tabs.achievements")}</button>
-            <button role="tab" aria-selected={tab === "ranking"} className={tabCls(tab === "ranking")} onClick={() => setTab("ranking")}>{t("tabs.ranking")}</button>
+          <div className="tabbar mb-5" role="tablist">
+            {TABS.map((tb) => (
+              <button key={tb.id} role="tab" aria-selected={tab === tb.id} className={`tab ${tab === tb.id ? "tab-on" : ""}`} onClick={() => setTab(tb.id)}>
+                {tb.icon}
+                <span>{tb.label}</span>
+              </button>
+            ))}
           </div>
           {tab === "collection" ? <Collection /> : tab === "market" ? <Market /> : tab === "achievements" ? <Achievements /> : <Ranking />}
         </div>

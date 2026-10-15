@@ -59,6 +59,7 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     open: () => sim.open(),
     reset: () => { sim.reset(); draw.current(); },
     skip: (r) => { sim.skip(r); draw.current(); },
+    collect: () => { sim.collect(); dirty.current = true; },
   }), [sim]);
 
   useEffect(() => {
@@ -344,7 +345,8 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       const now = performance.now();
       const dt = Math.max(8, now - view.t) / 1000;
       const vx = dx / dt; // px/s
-      if (Math.abs(vx) > 150) sim.nudge(clamp(-vx * 0.004, -3, 3), Math.min(2.5, Math.abs(vx) * 0.0025), 0);
+      // Inclinar la máquina: las bolas resbalan hacia el lado contrario; un tirón fuerte las levanta un poco.
+      if (Math.abs(vx) > 60) sim.shake(clamp(-vx * 0.012, -7, 7), Math.min(1.5, Math.max(0, Math.abs(vx) - 400) * 0.004), 0);
       view.x = e.clientX;
       view.y = e.clientY;
       view.t = now;

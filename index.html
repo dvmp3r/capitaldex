@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CapitalDex</title>
     <meta name="description" content="Juego incremental: colecciona empresas cotizadas reales y haz crecer tu capital." />
-    <meta name="theme-color" content="#1c1c1c" />
+    <meta name="theme-color" content="#141416" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:title" content="CapitalDex" />
+    <meta property="og:description" content="Colecciona empresas reales que cotizan en bolsa y haz crecer tu capital. Juego idle gratuito en el navegador." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -14,7 +19,26 @@
     />
   </head>
   <body>
-    <div id="root"></div>
+    <style>
+      /* Pantalla de carga mínima: desaparece cuando React monta la aplicación. */
+      .splash { position: fixed; inset: 0; display: grid; place-items: center; background: #1c1c1c; color: #f7f7f7; font-family: "Bricolage Grotesque", system-ui, sans-serif; }
+      .splash > div { display: flex; flex-direction: column; align-items: center; gap: 14px; animation: splash-in 400ms ease-out both; }
+      .splash b { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+      .splash b i { font-style: normal; color: #f5b921; }
+      .splash s { display: block; width: 120px; height: 3px; border-radius: 99px; background: #2a2a2a; overflow: hidden; text-decoration: none; }
+      .splash s::after { content: ""; display: block; width: 40%; height: 100%; background: #f5b921; animation: splash-bar 1.1s ease-in-out infinite; }
+      @keyframes splash-bar { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+      @keyframes splash-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; } }
+    </style>
+    <div id="root">
+      <div class="splash" aria-busy="true">
+        <div>
+          <svg width="56" height="56" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#141416"/><circle cx="32" cy="31" r="18" fill="#c48a0e"/><path d="M14 31a18 18 0 0 1 36 0z" fill="#f5b921"/><path d="M14 31h36" stroke="#141416" stroke-width="2.2"/><path d="M18 52l8-7 7 4 13-11" fill="none" stroke="#f5b921" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <b>Capital<i>Dex</i></b>
+          <s></s>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

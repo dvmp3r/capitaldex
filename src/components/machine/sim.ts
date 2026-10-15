@@ -68,7 +68,7 @@ const CAP_COUNT = 64;
 /** Paso fijo de la física de la vitrina y pasadas de proyección por paso. */
 const H = 1 / 120;
 const ITERATIONS = 4;
-const MAX_SPEED = 7;
+const MAX_SPEED = 4.5;
 const SLEEP_SPEED = 0.04;
 /** Mezcla decorativa de la vitrina (más colorida que las probabilidades reales, que se muestran aparte). */
 const DOME_MIX: Rarity[] = [
@@ -93,7 +93,11 @@ export class GachaSim {
   private timers: { at: number; resolve: () => void }[] = [];
   private acc = 0;
   private kicks: number[] = [];
+  /** Campo de aceleración transitorio (al mover la máquina): empuja de lado, apenas hacia arriba. */
+  private field = { ax: 0, ay: 0, az: 0, until: 0 };
   private prev: Vec3[] = [];
+  /** La cápsula abierta se está encogiendo hasta desaparecer (al guardar la carta). */
+  private vanishing = false;
   private glowPhase: { start: number; dur: number } | null = null;
   private lidPhase: { start: number; dur: number } | null = null;
 
@@ -132,10 +136,21 @@ export class GachaSim {
 
   /** ¿Hay algo moviéndose o alguna fase pendiente? (la escena no dibuja cuando no) */
   busy(): boolean {
-    return this.moving || this.stir > 0 || this.crank.t < 1 || (this.capsule.active && !this.capsule.settled) || this.particles.length > 0 || this.capsule.glow > 0.01 || this.timers.length > 0;
+    return this.moving || this.vanishing || this.stir > 0 || this.crank.t < 1 || (this.capsule.active && !this.capsule.settled) || this.particles.length > 0 || this.capsule.glow > 0.01 || this.timers.length > 0;
   }
 
-  /** Sacudida visual: empuja todas las cápsulas (con algo de azar). */
+  /**
+   * Mover la máquina: las cápsulas sienten una aceleración contraria durante un instante (como al
+   * inclinar una pecera). Suave: nunca supera la gravedad, así que resbalan y se revuelven, no vuelan.
+   */
+  shake(ax: number, ay: number, az: number) {
+    const lim = (v: number, m: number) => Math.max(-m, Math.min(m, v));
+    this.field = { ax: lim(ax, 7), ay: lim(ay, 1.5), az: lim(az, 7), until: this.time + 0.12 };
+    for (const b of this.caps) b.asleep = false;
+    this.moving = true;
+  }
+
+  /** Impulso directo a todas las cápsulas (con algo de azar). */
   nudge(ax: number, ay: number, az: number) {
     for (const b of this.caps) {
       b.asleep = false;
@@ -202,7 +217,13 @@ export class GachaSim {
     return this.after(1.05);
   }
 
+  /** Recoger la cápsula abierta: se encoge y desaparece de la bandeja. */
+  collect() {
+    if (this.capsule.active) this.vanishing = true;
+  }
+
   reset() {
+    this.vanishing = false;
     this.timers = [];
     this.glowPhase = null;
     this.lidPhase = null;
@@ -211,6 +232,7 @@ export class GachaSim {
   }
 
   skip(rarity: Rarity) {
+    this.vanishing = false;
     this.timers = [];
     this.glowPhase = null;
     this.lidPhase = null;
@@ -246,7 +268,7 @@ export class GachaSim {
     if (this.stir > 0) this.stir -= dt;
     while (this.kicks.length && this.kicks[0] <= this.time) {
       this.kicks.shift();
-      this.kick(2.7);
+      this.kick(1.7);
     }
 
     // Cápsulas de la vitrina: paso fijo (varios subpasos por fotograma, con tope)
@@ -258,7 +280,19 @@ export class GachaSim {
 
     // Cápsula que cae
     if (this.capsule.active && !this.capsule.settled) this.stepDrop(dt);
-    if (this.capsule.active) {
+    if (this.capsule.active && this.vanishing) {
+      const sc = this.capsule.scale;
+      const k = Math.max(0, 1 - dt * 7);
+      sc.x *= k;
+      sc.y *= k;
+      sc.z *= k;
+      this.capsule.p.y += dt * 0.5;
+      this.capsule.glow = 0;
+      if (sc.x < 0.03) {
+        this.vanishing = false;
+        this.capsule = { ...this.capsule, active: false, settled: false, bounces: 0, lid: 0, scale: v3(1, 1, 1) };
+      }
+    } else if (this.capsule.active) {
       // recupera la forma tras el aplastamiento
       const sc = this.capsule.scale;
       sc.x += (1 - sc.x) * Math.min(1, dt * 14);
@@ -315,6 +349,14 @@ export class GachaSim {
       prev[i].z = b.p.z;
       if (b.asleep) continue;
       b.v.y -= GRAVITY * h;
+      if (this.time < this.field.until) {
+        b.v.x += this.field.ax * h * (0.8 + (i % 5) * 0.1);
+        b.v.y += this.field.ay * h;
+        b.v.z += this.field.az * h * (0.8 + (i % 3) * 0.1);
+      }
+      // leve rozamiento con el aire
+      b.v.x *= 0.998;
+      b.v.z *= 0.998;
       b.p.x += b.v.x * h;
       b.p.y += b.v.y * h;
       b.p.z += b.v.z * h;
@@ -363,11 +405,31 @@ export class GachaSim {
       }
     }
 
-    // 3) Velocidad a partir del desplazamiento; fricción en contacto; sueño
+    // 3) Apoyo: suelo o una cápsula debajo. Solo así se puede dormir; sin apoyo, se despierta.
+    const supported = new Uint8Array(n);
+    for (let i = 0; i < n; i++) if (caps[i].p.y <= min.y + r + 0.006) supported[i] = 1;
+    const near = minD + 0.02;
+    for (let i = 0; i < n; i++) {
+      const a = caps[i];
+      for (let j = i + 1; j < n; j++) {
+        const b = caps[j];
+        const dx = b.p.x - a.p.x;
+        const dz = b.p.z - a.p.z;
+        const dy = b.p.y - a.p.y;
+        if (Math.abs(dy) > near || dx * dx + dz * dz + dy * dy > near * near) continue;
+        if (dy > 0.45 * minD) supported[j] = 1; // b está encima de a
+        else if (dy < -0.45 * minD) supported[i] = 1; // a está encima de b
+      }
+    }
+
+    // 4) Velocidad a partir del desplazamiento; fricción en contacto; sueño
     let moving = false;
     for (let i = 0; i < n; i++) {
       const b = caps[i];
-      if (b.asleep) continue;
+      if (b.asleep) {
+        if (!supported[i]) b.asleep = false; // perdió el apoyo: vuelve a caer
+        continue;
+      }
       b.v.x = (b.p.x - prev[i].x) / h;
       b.v.y = (b.p.y - prev[i].y) / h;
       b.v.z = (b.p.z - prev[i].z) / h;
@@ -378,7 +440,7 @@ export class GachaSim {
       }
       clampSpeed(b.v);
       const sp = Math.hypot(b.v.x, b.v.y, b.v.z);
-      if (contact[i] && sp < SLEEP_SPEED) {
+      if (supported[i] && sp < SLEEP_SPEED) {
         b.v.x = b.v.y = b.v.z = 0;
         b.asleep = true;
       } else {

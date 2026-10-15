@@ -56,6 +56,7 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
   /** Guarda la carta: animación de salida y la máquina vuelve a estar lista. */
   const dismiss = () => {
     clearLeave();
+    machine.current?.collect();
     setLeaving(true);
     leaveTimer.current.push(window.setTimeout(() => {
       setLeaving(false);
@@ -159,7 +160,7 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
       <div className="stage-light" />
       {showingCard && !leaving && (result.rarity === "epica" || result.rarity === "legendaria") && <div className="stage-rays" />}
       {HAS_WEBGL ? (
-        <Suspense fallback={<div className="h-full w-full" />}>
+        <Suspense fallback={<div className="machine-skeleton h-full w-full" aria-busy="true" />}>
           <Machine3D ref={machine} dimmed={showingCard && !leaving} className="h-full w-full" />
         </Suspense>
       ) : (

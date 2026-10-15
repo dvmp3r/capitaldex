@@ -64,11 +64,11 @@ export function GachaPanel() {
       <Hint pulls={gacha.pulls} canAfford={canAfford} lastRarity={lastPull?.rarity} />
 
       <div className="num mt-4 flex justify-between text-xs text-muted">
-        <span>{t("gacha.streakEpic", { n: gacha.sinceEpic })}</span>
+        <span>{gacha.sinceEpic === 1 ? t("gacha.streakEpicOne") : t("gacha.streakEpic", { n: gacha.sinceEpic })}</span>
         <span>{t("gacha.streakLegendary", { n: gacha.sinceLegendary })}</span>
       </div>
 
-      <details className="mt-4 text-xs text-muted">
+      <details className="info mt-4 text-xs text-muted">
         <summary className="cursor-pointer select-none font-medium hover:text-ink">{t("gacha.odds")}</summary>
         <ul className="num mt-2 space-y-1">
           {[...RARITIES].reverse().map((r) => (
@@ -121,7 +121,7 @@ function StatsPanel() {
   ];
 
   return (
-    <details className="mt-2 text-xs text-muted">
+    <details className="info mt-2 text-xs text-muted">
       <summary className="cursor-pointer select-none font-medium hover:text-ink">{t("stats.title")}</summary>
       <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
         {rows.map(([k, v]) => (

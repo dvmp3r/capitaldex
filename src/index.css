@@ -255,6 +255,31 @@ h1, h2, h3 { text-wrap: balance; }
 .btn-ghost:hover { background: var(--color-surface-2); }
 .btn-ghost:active { transform: translateY(1px); }
 
+/* Barra de pestañas: control segmentado con icono */
+.tabbar { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--color-surface); border: 1px solid var(--color-line); width: fit-content; max-width: 100%; overflow-x: auto; }
+.tab { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: var(--color-muted); white-space: nowrap; transition: background-color 150ms, color 150ms; }
+.tab:hover { color: var(--color-ink); background: var(--color-surface-2); }
+.tab-on, .tab-on:hover { background: var(--color-ink); color: var(--color-bg); }
+.tab svg { opacity: 0.85; }
+
+/* Bloques desplegables de información (probabilidades, estadísticas) */
+.info { border: 1px solid var(--color-line); border-radius: 12px; padding: 8px 12px; background: oklch(0.14 0 0 / 0.6); }
+.info > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; }
+.info > summary::-webkit-details-marker { display: none; }
+.info > summary::after { content: ""; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); transition: transform 150ms; margin-right: 2px; }
+.info[open] > summary::after { transform: rotate(-135deg); }
+
+/* Silueta mientras carga la máquina 3D */
+.machine-skeleton { position: relative; }
+.machine-skeleton::before { content: ""; position: absolute; left: 22%; right: 22%; top: 8%; bottom: 10%; border-radius: 18px; background: linear-gradient(180deg, oklch(0.22 0 0), oklch(0.16 0 0)); animation: skeleton-pulse 1.4s ease-in-out infinite; }
+@keyframes skeleton-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+/* Medallas del ranking */
+.medal { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; font-weight: 800; font-size: 14px; color: var(--color-bg); flex-shrink: 0; }
+.medal-gold { background: linear-gradient(160deg, oklch(0.92 0.14 92), oklch(0.78 0.16 82)); box-shadow: 0 0 18px -4px oklch(0.84 0.15 88 / 0.7); }
+.medal-silver { background: linear-gradient(160deg, oklch(0.9 0 0), oklch(0.72 0 0)); }
+.medal-bronze { background: linear-gradient(160deg, oklch(0.78 0.1 60), oklch(0.6 0.1 50)); }
+
 .chip {
   height: 30px;
   padding: 0 12px;

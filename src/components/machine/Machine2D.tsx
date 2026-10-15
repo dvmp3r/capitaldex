@@ -11,6 +11,8 @@ export interface MachineHandle {
   open: () => Promise<void>;
   reset: () => void;
   skip: (rarity: Rarity) => void;
+  /** Recoger la cápsula abierta de la bandeja (desaparece). */
+  collect: () => void;
 }
 
 interface Props {
@@ -57,6 +59,7 @@ export const Machine2D = forwardRef<MachineHandle, Props>(function Machine2D({ d
     open: () => settle(sim.open(), 1400),
     reset: () => sim.reset(),
     skip: (r) => sim.skip(r),
+    collect: () => sim.collect(),
   }), [sim]);
 
   useEffect(() => {
