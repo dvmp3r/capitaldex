@@ -63,9 +63,10 @@ export function CompanyCard({ company, shares = 0, hidden = false, size = "lg", 
 
       {/* Pie: rareza + datos */}
       <footer className="mt-2">
-        <div className="flex items-baseline justify-between">
-          <span className={`text-[11px] font-bold uppercase tracking-wide ${RARITY_INK[rarity]}`}>{rarityLabel(rarity)}</span>
-          {!hidden && <span className="num text-[11px] text-muted">{t("card.cap")} {fmtUsd(company.marketCapUsd)}</span>}
+        {/* Si no cabe en una línea, la capitalización baja entera a la siguiente, a la derecha (nunca se parte). */}
+        <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+          <span className={`whitespace-nowrap text-[11px] font-bold uppercase tracking-wide ${RARITY_INK[rarity]}`}>{rarityLabel(rarity)}</span>
+          {!hidden && <span className="num ml-auto whitespace-nowrap text-[11px] text-muted">{t("card.cap")} {fmtUsd(company.marketCapUsd)}</span>}
         </div>
 
         {!hidden && big && (
