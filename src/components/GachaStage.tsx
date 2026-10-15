@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { SHARE_MILESTONES } from "../game/balance";
 import { playDrop, playKnob, playMilestone, playPop, playRattle, playReveal } from "../game/sound";
 import type { PullResult } from "../game/types";
@@ -6,6 +6,18 @@ import { t } from "../i18n";
 import { useGame } from "../store/gameStore";
 import { CompanyCard } from "./CompanyCard";
 import { Machine2D, type MachineHandle } from "./machine/Machine2D";
+
+const Machine3D = lazy(() => import("./machine/Machine3D").then((m) => ({ default: m.Machine3D })));
+
+/** WebGL disponible: máquina 3D; si no, la ilustración 2D. Se decide una vez. */
+const HAS_WEBGL = (() => {
+  try {
+    const cv = document.createElement("canvas");
+    return !!(cv.getContext("webgl2") || cv.getContext("webgl"));
+  } catch {
+    return false;
+  }
+})();
 
 export type StagePhase = "idle" | "turning" | "dropping" | "opening" | "revealed";
 
@@ -43,7 +55,11 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
     const prefersReduced = reduced || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     (async () => {
-      if (!m) return;
+      if (!m) {
+        // La máquina aún no está montada (módulo 3D cargando): mostrar el resultado sin secuencia.
+        setPhase("revealed");
+        return;
+      }
       m.reset();
       if (prefersReduced) {
         m.skip(result.rarity);
@@ -105,7 +121,13 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
       data-legendary={phase === "revealed" && result?.rarity === "legendaria" ? "true" : undefined}
     >
       <div className="stage-light" />
-      <Machine2D ref={machine} dimmed={phase === "revealed"} idle={phase === "idle" || phase === "revealed"} className="h-full w-full" />
+      {HAS_WEBGL ? (
+        <Suspense fallback={<div className="h-full w-full" />}>
+          <Machine3D ref={machine} dimmed={phase === "revealed"} className="h-full w-full" />
+        </Suspense>
+      ) : (
+        <Machine2D ref={machine} dimmed={phase === "revealed"} idle={phase === "idle" || phase === "revealed"} className="h-full w-full" />
+      )}
       {phase === "revealed" && result && (
         <div key={revealKey} className="card-rise absolute inset-[4%]">
           <CompanyCard company={result.company} shares={result.shares} size="lg" className="h-full w-full shadow-[0_30px_60px_-20px_oklch(0_0_0/0.9)]" />

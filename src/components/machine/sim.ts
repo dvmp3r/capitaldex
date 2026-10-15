@@ -92,6 +92,11 @@ export class GachaSim {
     }
   }
 
+  /** ¿Hay algo moviéndose o alguna fase pendiente? (la escena baja los fps cuando no) */
+  busy(): boolean {
+    return this.stir > 0 || this.crank.t < 1 || (this.capsule.active && !this.capsule.settled) || this.particles.length > 0 || this.capsule.glow > 0.01 || this.timers.length > 0;
+  }
+
   /** Promesa que se resuelve cuando el reloj de la simulación llegue a `seconds` desde ahora. */
   private after(seconds: number) {
     return new Promise<void>((resolve) => this.timers.push({ at: this.time + seconds, resolve }));

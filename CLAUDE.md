@@ -10,7 +10,7 @@ Juego incremental de navegador: gacha de empresas cotizadas reales. Responder y 
 - `src/game/` — reglas puras (sin React). `balance.ts` tiene todas las constantes de equilibrio.
 - `src/store/gameStore.ts` — estado del juego (Zustand con persistencia local). Subir `SAVE_VERSION` y escribir una migración si cambia la forma del guardado.
 - `src/components/` — interfaz. Tokens de diseño en `src/index.css` (`@theme`).
-- `src/components/gacha3d/` — máquina de cápsulas en 3D: `sim.ts` (física y fases, sin three.js, con pruebas) y `GachaMachine3D.tsx` (escena React Three Fiber). `GachaStage.tsx` la dirige por fases. En desarrollo, `window.__gachaSim` permite forzar estados desde la consola.
+- `src/components/machine/` — máquina de cápsulas: `sim.ts` (física y fases, sin three.js, con pruebas), `Machine3D.tsx` (three.js plano, estilizado: Phong sin entorno ni refracción, 24 fps en reposo, carga diferida en su propio trozo) y `Machine2D.tsx` (ilustración SVG, solo si no hay WebGL). `GachaStage.tsx` la dirige por fases. En desarrollo, `window.__gachaSim` permite forzar estados desde la consola.
 - `data/empresas.xlsx` → `npm run data` → `src/data/companies.json`. Nunca editar el JSON a mano.
 - `src/lib/cloud.ts` + `src/store/cloudStore.ts` — cuentas, guardado en la nube y ranking (Supabase). Esquema en `supabase/schema.sql`. Variables `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` (en `.env.local` y en las variables del repositorio de GitHub); sin ellas el juego funciona sin nube.
 - Publicación: GitHub Pages desde `.github/workflows/deploy.yml` en cada push a `main`; dominio kaminarishop.store (DNS en IONOS). Repo público: nada de correos ni datos personales en el código.

@@ -5,4 +5,5 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   base: "./", // rutas relativas: el build funciona en cualquier carpeta o subruta
   plugins: [react(), tailwindcss()],
+  build: { rollupOptions: { output: { manualChunks: { three: ["three"] } } } },
 });
