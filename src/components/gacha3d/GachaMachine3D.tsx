@@ -80,12 +80,10 @@ function Scene({ sim }: { sim: GachaSim }) {
       <directionalLight position={[3.5, 7, 5]} intensity={2.2} />
       <pointLight position={[-4, 5, -2]} intensity={40} color="#bcd4ff" />
       <pointLight position={[2.5, 1.5, 4]} intensity={18} color="#ffe9cf" />
-      <Environment resolution={128}>
+      <Environment resolution={64}>
         <group>
-          <Lightformer intensity={1.6} rotation={[Math.PI / 2, 0, 0]} position={[0, 6, 0]} scale={[12, 12, 1]} />
-          <Lightformer intensity={1.4} rotation={[0, Math.PI / 2, 0]} position={[-6, 2, 0]} scale={[10, 4, 1]} color="#dbe6ff" />
-          <Lightformer intensity={1} rotation={[0, -Math.PI / 2, 0]} position={[6, 2, 0]} scale={[10, 4, 1]} color="#fff1dc" />
-          <Lightformer intensity={0.6} position={[0, 2, -8]} scale={[12, 6, 1]} color="#ffffff" />
+          <Lightformer intensity={1.2} rotation={[Math.PI / 2, 0, 0]} position={[0, 6, 0]} scale={[14, 14, 1]} />
+          <Lightformer intensity={0.5} position={[0, 2, -8]} scale={[16, 8, 1]} color="#ffffff" />
         </group>
       </Environment>
       <MachineBody sim={sim} />
@@ -106,32 +104,46 @@ const MAT = {
   dark: new THREE.MeshStandardMaterial({ color: "#0c0c0d", metalness: 0.2, roughness: 0.85 }),
   chrome: new THREE.MeshStandardMaterial({ color: "#e6e6ea", metalness: 1, roughness: 0.18 }),
   steel: new THREE.MeshStandardMaterial({ color: "#8c8c92", metalness: 0.9, roughness: 0.3 }),
-  glassDome: new THREE.MeshPhysicalMaterial({
-    color: "#ffffff",
-    transmission: 1,
-    thickness: 0.5,
-    roughness: 0.06,
-    ior: 1.45,
-    clearcoat: 1,
-    clearcoatRoughness: 0.05,
-    envMapIntensity: 0.7,
-  }),
-  glassWindow: new THREE.MeshPhysicalMaterial({
-    color: "#dfe7f2",
+  // Cristal estilizado: casi invisible, sin refracción ni reflejos (los reflejos del entorno se veían como rectángulos
+  // y la refracción real de three.js no dibuja objetos translúcidos a través del cristal).
+  glassDome: new THREE.MeshStandardMaterial({
+    color: "#b9c6d6",
     transparent: true,
-    opacity: 0.16,
-    roughness: 0.04,
+    opacity: 0.14,
+    roughness: 0.6,
     metalness: 0,
-    clearcoat: 1,
+    envMapIntensity: 0,
+    depthWrite: false,
+    side: THREE.FrontSide,
+  }),
+  glassInner: new THREE.MeshStandardMaterial({
+    color: "#7f93a8",
+    transparent: true,
+    opacity: 0.22,
+    roughness: 1,
+    metalness: 0,
+    envMapIntensity: 0,
+    depthWrite: false,
+    side: THREE.BackSide,
+  }),
+  glassShine: new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.22, depthWrite: false }),
+  glassWindow: new THREE.MeshStandardMaterial({
+    color: "#b9c6d6",
+    transparent: true,
+    opacity: 0.1,
+    roughness: 0.6,
+    metalness: 0,
+    envMapIntensity: 0,
     depthWrite: false,
   }),
-  capsuleBottom: new THREE.MeshPhysicalMaterial({ color: "#f3f3f3", transparent: true, opacity: 0.88, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.1 }),
-  seam: new THREE.MeshStandardMaterial({ color: "#1a1a1a", roughness: 0.6 }),
+  // Cápsulas de juguete: dos mitades opacas, brillo suave.
+  capsuleBottom: new THREE.MeshPhysicalMaterial({ color: "#f4f4f4", roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.25, envMapIntensity: 0.5 }),
+  seam: new THREE.MeshStandardMaterial({ color: "#2b2b2b", roughness: 0.7 }),
 };
 
 const capTop = (r: number) => new THREE.SphereGeometry(r, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2);
 const capBottom = (r: number) => new THREE.SphereGeometry(r, 28, 14, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
-const capSeam = (r: number) => new THREE.TorusGeometry(r, 0.012, 8, 40);
+const capSeam = (r: number) => new THREE.TorusGeometry(r, 0.008, 8, 40);
 const GEO = {
   domeTop: capTop(GEOM.capR),
   domeBottom: capBottom(GEOM.capR),
@@ -145,10 +157,11 @@ const topMaterials: Partial<Record<Rarity, THREE.MeshPhysicalMaterial>> = {};
 function topMaterial(rarity: Rarity) {
   return (topMaterials[rarity] ??= new THREE.MeshPhysicalMaterial({
     color: RARITY_HEX[rarity],
-    roughness: 0.28,
-    metalness: rarity === "legendaria" ? 0.35 : 0,
-    clearcoat: 1,
-    clearcoatRoughness: 0.08,
+    roughness: 0.35,
+    metalness: 0,
+    clearcoat: 0.6,
+    clearcoatRoughness: 0.25,
+    envMapIntensity: 0.5,
   }));
 }
 
@@ -222,10 +235,23 @@ function MachineBody({ sim }: { sim: GachaSim }) {
 /* ---------- Cúpula ---------- */
 
 function Dome() {
+  const c = GEOM.dome.c;
+  const r = GEOM.dome.r + 0.05;
   return (
-    <mesh position={[GEOM.dome.c.x, GEOM.dome.c.y, GEOM.dome.c.z]} material={MAT.glassDome} renderOrder={10}>
-      <sphereGeometry args={[GEOM.dome.r + 0.05, 64, 48]} />
-    </mesh>
+    <group position={[c.x, c.y, c.z]}>
+      {/* Cara interior: da volumen y oscurece un poco el fondo de la esfera */}
+      <mesh material={MAT.glassInner} renderOrder={9}>
+        <sphereGeometry args={[r, 48, 32]} />
+      </mesh>
+      {/* Cara exterior: velo muy ligero */}
+      <mesh material={MAT.glassDome} renderOrder={10}>
+        <sphereGeometry args={[r, 48, 32]} />
+      </mesh>
+      {/* Brillo estilizado, plano, arriba a la izquierda */}
+      <mesh position={[-0.42, 0.58, 0.72]} rotation={[-0.55, -0.45, 0.6]} material={MAT.glassShine} renderOrder={11}>
+        <circleGeometry args={[0.2, 24]} />
+      </mesh>
+    </group>
   );
 }
 
@@ -260,7 +286,7 @@ function DropCapsule({ sim }: { sim: GachaSim }) {
   const root = useRef<THREE.Group>(null);
   const lid = useRef<THREE.Group>(null);
   const light = useRef<THREE.PointLight>(null);
-  const topMat = useMemo(() => new THREE.MeshPhysicalMaterial({ color: RARITY_HEX.comun, roughness: 0.26, clearcoat: 1, clearcoatRoughness: 0.08, emissive: RARITY_HEX.comun, emissiveIntensity: 0 }), []);
+  const topMat = useMemo(() => new THREE.MeshPhysicalMaterial({ color: RARITY_HEX.comun, roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.25, envMapIntensity: 0.5, emissive: RARITY_HEX.comun, emissiveIntensity: 0 }), []);
   const last = useRef<Rarity | null>(null);
 
   useFrame(() => {
@@ -272,7 +298,6 @@ function DropCapsule({ sim }: { sim: GachaSim }) {
     if (last.current !== d.rarity) {
       topMat.color.set(RARITY_HEX[d.rarity]);
       topMat.emissive.set(RARITY_HEX[d.rarity]);
-      topMat.metalness = d.rarity === "legendaria" ? 0.35 : 0;
       light.current?.color.set(RARITY_HEX[d.rarity]);
       last.current = d.rarity;
     }
