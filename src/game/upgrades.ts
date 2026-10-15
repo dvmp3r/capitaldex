@@ -265,9 +265,9 @@ function build(): Series[] {
   out.push({
     id: "click", category: "Mesa de operaciones", kind: "clickSeconds",
     headlines: [
-      ["Terminal profesional", "Operar vale más segundos de ingresos."],
-      ["Mesa de trading con tres pantallas", "Cada operación rinde más."],
-      ["Algoritmo de alta frecuencia", "Operar a lo grande."],
+      ["Terminal profesional", "Cada orden vale más segundos de ingresos."],
+      ["Mesa de trading con tres pantallas", "Cada orden rinde más."],
+      ["Algoritmo de alta frecuencia", "Órdenes a lo grande (pero siguen siendo 10)."],
     ],
     maxLevel: 10, baseCost: 2_000, costGrowth: 1.7,
     requirement: (level) => ({ pulls: 3 + 6 * level }),
@@ -343,8 +343,8 @@ export function seriesValue(s: Series, level: number): number {
       return 1 - Math.pow(0.98, level); // 2 % por nivel, compuesto: 18 % en el nivel 10
     case "clickSeconds": {
       let add = 0;
-      for (let i = 1; i <= level; i++) add += 2 * Math.pow(1.25, i - 1);
-      return add; // +2 s, +2,5 s, +3,1 s… ≈ +66 s en el nivel 10
+      for (let i = 1; i <= level; i++) add += 0.5 * Math.pow(1.2, i - 1);
+      return add; // +0,5 s, +0,6 s, +0,7 s… ≈ +13 s en el nivel 10 (16 s por orden)
     }
     case "offlineRate":
       return Math.min(1, OFFLINE_RATE + 0.05 * level);
@@ -360,7 +360,7 @@ export function seriesValueLabel(s: Series, level: number): string {
   const v = seriesValue(s, level);
   switch (s.kind) {
     case "gachaDiscount": return `−${Math.round(v * 100)} %`;
-    case "clickSeconds": return `+${Math.round(v)} s`;
+    case "clickSeconds": return `+${v.toFixed(1)} s`;
     case "offlineRate": return `${Math.round(v * 100)} %`;
     case "offlineCapHours": return `${Math.round(v)} h`;
     case "autoPull": return v ? `cada ${v} s` : "no";

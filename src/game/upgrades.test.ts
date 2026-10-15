@@ -55,7 +55,7 @@ describe("series de titulares por niveles", () => {
     expect(m.sector["Energía"]).toBeCloseTo(cumulativeMult(3) * 3, 10);
     expect(m.global).toBeCloseTo(cumulativeMult(2), 10);
     expect(m.gachaCost).toBeCloseTo(0.98, 10);
-    expect(m.clickSeconds).toBeCloseTo(CLICK_SECONDS + 2, 10);
+    expect(m.clickSeconds).toBeCloseTo(CLICK_SECONDS + 0.5, 10);
     expect(baseMultipliers().offlineRate).toBe(OFFLINE_RATE);
     expect(seriesValue(SERIES_BY_ID.get("offlineRate")!, 10)).toBe(1);
     expect(seriesValue(SERIES_BY_ID.get("offlineCap")!, 10)).toBeCloseTo(24, 5);

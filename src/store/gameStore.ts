@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { BY_ID, INDEX_MEMBERS, POOL } from "../data/companies";
-import { OFFLINE_MIN_SECONDS, SAVE_VERSION, SHARE_MILESTONES } from "../game/balance";
+import { ORDERS_MAX, ORDERS_REFILL_SECONDS, OFFLINE_MIN_SECONDS, SAVE_VERSION, SHARE_MILESTONES } from "../game/balance";
 import { clickValue, offlineEarnings, totalIncome, type IncomeBreakdown } from "../game/economy";
 import { ACHIEVEMENT_BY_ID, achievementsMult, newlyUnlocked, rewardLabel, type AchievementContext } from "../game/achievements";
 import { INITIAL_GACHA, pullCost, rollPull } from "../game/gacha";
@@ -59,6 +59,8 @@ export interface GameState {
   pullSeq: number;
   /** Momento de la última cartera automática */
   lastAutoPull: number;
+  /** Órdenes de Operar disponibles (se recuperan con el tiempo) */
+  orders: number;
   /** Noticias: oferta en pantalla y momento de la siguiente */
   news: { offer: NewsOffer | null; nextAt: number };
   /** Transitorio (no se guarda) */
@@ -70,7 +72,8 @@ export interface GameState {
 
   tick: (now?: number) => void;
   openPack: () => PullResult | null;
-  work: () => void;
+  /** Gasta una orden; devuelve lo ganado (0 si no quedan). */
+  work: () => number;
   buyUpgrade: (id: string) => boolean;
   acceptNews: () => void;
   checkAchievements: () => void;
@@ -99,6 +102,7 @@ function initialState(now = Date.now()) {
     achievements: [] as string[],
     pullSeq: 0,
     lastAutoPull: 0,
+    orders: ORDERS_MAX,
     news: { offer: null as NewsOffer | null, nextAt: 0 },
     lastPull: null,
     offline: null,
@@ -201,6 +205,7 @@ export const useGame = create<GameState>()(
             totalEarned: s.totalEarned + report.earned,
             lastTick: now,
             offline: report.earned > 0 ? report : null,
+            orders: ORDERS_MAX,
             boosts: s.boosts.filter((b) => b.until > now),
             news: { offer: null, nextAt: scheduleNext(now, Math.random, mults.newsFrequency) },
           });
@@ -212,6 +217,7 @@ export const useGame = create<GameState>()(
           capital: s.capital + earned,
           totalEarned: s.totalEarned + earned,
           lastTick: now,
+          orders: Math.min(ORDERS_MAX, s.orders + dt / ORDERS_REFILL_SECONDS),
           stats: { ...s.stats, playSeconds: s.stats.playSeconds + dt },
         };
         if (s.boosts.some((b) => b.until <= now)) patch.boosts = s.boosts.filter((b) => b.until > now);
@@ -265,10 +271,12 @@ export const useGame = create<GameState>()(
 
       work: () => {
         const s = get();
+        if (s.orders < 1) return 0;
         const mults = multsOf(s.upgrades, s.boosts, Date.now(), s.achievements);
         const gain = clickValue(incomeOf(s.holdings, mults).total, mults.clickSeconds);
-        set({ capital: s.capital + gain, totalEarned: s.totalEarned + gain, stats: { ...s.stats, clicks: s.stats.clicks + 1 } });
+        set({ capital: s.capital + gain, totalEarned: s.totalEarned + gain, orders: s.orders - 1, stats: { ...s.stats, clicks: s.stats.clicks + 1 } });
         if (s.stats.clicks % 25 === 24) get().checkAchievements();
+        return gain;
       },
 
       buyUpgrade: (id) => {
@@ -362,6 +370,7 @@ export const useGame = create<GameState>()(
           upgrades: s.upgrades,
           boosts: s.boosts,
           freePulls: s.freePulls,
+          orders: s.orders,
           achievements: s.achievements,
         };
         return serializeSave(data);
@@ -383,6 +392,7 @@ export const useGame = create<GameState>()(
           upgrades: normalizeLevels(r.data.upgrades),
           boosts: r.data.boosts ?? [],
           freePulls: r.data.freePulls ?? 0,
+          orders: Math.min(ORDERS_MAX, r.data.orders ?? ORDERS_MAX),
           achievements: (r.data.achievements ?? []).filter((id) => ACHIEVEMENT_BY_ID.has(id)),
           news: { offer: null, nextAt: 0 },
           lastPull: null,
@@ -407,6 +417,7 @@ export const useGame = create<GameState>()(
         upgrades: s.upgrades,
         boosts: s.boosts,
         freePulls: s.freePulls,
+        orders: s.orders,
         achievements: s.achievements,
         news: s.news,
       }),
@@ -420,6 +431,7 @@ export const useGame = create<GameState>()(
           boosts: p.boosts ?? [],
           freePulls: p.freePulls ?? 0,
           achievements: p.achievements ?? [],
+          orders: Math.min(ORDERS_MAX, p.orders ?? ORDERS_MAX),
           news: p.news ?? { offer: null, nextAt: 0 },
         };
       },

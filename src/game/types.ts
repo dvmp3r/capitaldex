@@ -73,6 +73,8 @@ export interface SaveData {
   upgrades?: string[] | Record<string, number>;
   boosts?: ActiveBoost[];
   freePulls?: number;
+  /** Órdenes de Operar disponibles (desde la versión 4) */
+  orders?: number;
   /** Desde la versión 4 */
   achievements?: string[];
 }

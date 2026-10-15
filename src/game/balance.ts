@@ -43,8 +43,12 @@ export const SHARE_MILESTONES: { shares: number; mult: number }[] = [
 ];
 
 /** Botón Operar: equivale a N segundos de ingresos pasivos, con un mínimo. */
-export const CLICK_SECONDS = 5;
+/** Operar gasta una orden; cada orden vale CLICK_SECONDS segundos de ingresos (mínimo CLICK_MIN). */
+export const CLICK_SECONDS = 3;
 export const CLICK_MIN = 1;
+/** Órdenes disponibles como máximo y segundos que tarda en recuperarse una. Limitan el juego manual. */
+export const ORDERS_MAX = 10;
+export const ORDERS_REFILL_SECONDS = 10;
 
 export const OFFLINE_RATE = 0.5;
 export const OFFLINE_CAP_SECONDS = 8 * 3600;

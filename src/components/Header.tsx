@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveValue } from "../hooks/useTween";
+import { ORDERS_MAX, ORDERS_REFILL_SECONDS } from "../game/balance";
 import { clickValue } from "../game/economy";
 import { fmt, fmtCapital, fmtMult } from "../game/format";
 import { rarityLabel } from "../game/rarity";
@@ -13,6 +14,7 @@ import { SaveMenu } from "./SaveMenu";
 export function Header() {
   const capital = useGame((s) => s.capital);
   const work = useGame((s) => s.work);
+  const orders = useGame((s) => s.orders);
   const boosts = useGame((s) => s.boosts);
   const freePulls = useGame((s) => s.freePulls);
   const sound = useGame((s) => s.settings.sound);
@@ -34,8 +36,8 @@ export function Header() {
   }, [capital]);
 
   const onWork = () => {
-    const gain = clickValue(income.total, mults.clickSeconds);
-    work();
+    const gain = work();
+    if (gain <= 0) return;
     if (sound) playClick();
     const id = ++seq.current;
     setFloats((f) => [...f.slice(-5), { id, text: `+${fmt(gain)}`, x: 30 + Math.random() * 40 }]);
@@ -69,8 +71,16 @@ export function Header() {
 
         <div className="order-2 flex items-center gap-2 sm:order-3">
           <div className="relative">
-            <button onClick={onWork} className="btn-primary h-9 shrink-0 whitespace-nowrap px-3 text-sm sm:h-10 sm:px-4" title={t("header.workTitle")}>
+            <button
+              onClick={onWork}
+              disabled={orders < 1}
+              className="btn-primary relative h-9 shrink-0 overflow-hidden whitespace-nowrap px-3 text-sm sm:h-10 sm:px-4"
+              title={orders < 1 ? t("header.noOrders") : t("header.workTitle", { n: Math.round(mults.clickSeconds), refill: ORDERS_REFILL_SECONDS })}
+              aria-label={`${t("header.work")} +${fmt(clickValue(income.total, mults.clickSeconds))} · ${t("header.orders", { n: Math.floor(orders), max: ORDERS_MAX })}`}
+            >
               {t("header.work")} <span className="num font-semibold opacity-90">+{fmt(clickValue(income.total, mults.clickSeconds))}</span>
+              <span className="num ml-2 rounded-full bg-black/20 px-1.5 text-[11px] font-semibold">{Math.floor(orders)}/{ORDERS_MAX}</span>
+              <i aria-hidden className="absolute bottom-0 left-0 h-[3px] bg-black/35 transition-[width] duration-300" style={{ width: `${(orders / ORDERS_MAX) * 100}%` }} />
             </button>
             {floats.map((f) => (
               <span key={f.id} className="float-num text-sm" style={{ left: `${f.x}%`, top: "-4px" }}>{f.text}</span>

@@ -242,3 +242,7 @@ Nunca: vender ventaja en el ranking, mercado de cartas con dinero real, criptoac
 - ¿Las empresas de Asia con ADR se tratan por su cotización local o por el ADR? Afecta a la moneda y al factor de mercado.
 - ¿Cómo se gestiona una empresa que cambia de índice a mitad de temporada? Propuesta: los índices se congelan por temporada.
 - ¿Nombre definitivo? Candidatos: CapitalDex, Tickr, Portfolio Legends, Bolsa Gacha. Comprobar dominio y marca antes de la fase 2.
+
+### Juego manual: órdenes (15-oct-2026)
+
+Operar gasta una **orden**. Hay 10 órdenes como máximo y se recupera una cada 10 s; cada orden vale 3 s de ingresos (la serie "Mesa de operaciones" sube hasta ~16 s). Así el juego manual aporta como mucho un 30 % extra (160 % con la serie al máximo) y ya no es posible generar capital ilimitado pulsando. Antes cada pulsación valía 5 s de ingresos sin límite, y bastaba con pulsar rápido para comprar cualquier cosa.
