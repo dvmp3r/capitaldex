@@ -136,9 +136,8 @@ const MAT = {
     envMapIntensity: 0,
     depthWrite: false,
   }),
-  // Cápsulas de juguete: dos mitades opacas, brillo suave.
-  capsuleBottom: new THREE.MeshPhysicalMaterial({ color: "#f4f4f4", roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.25, envMapIntensity: 0.5 }),
-  seam: new THREE.MeshStandardMaterial({ color: "#2b2b2b", roughness: 0.7 }),
+  // Costura: anillo fino y claro (nada de línea negra tipo Pokéball).
+  seam: new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.4, transparent: true, opacity: 0.35 }),
 };
 
 const capTop = (r: number) => new THREE.SphereGeometry(r, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2);
@@ -154,14 +153,35 @@ const GEO = {
 };
 
 const topMaterials: Partial<Record<Rarity, THREE.MeshPhysicalMaterial>> = {};
+const bottomMaterials: Partial<Record<Rarity, THREE.MeshPhysicalMaterial>> = {};
+
+/** Color de la mitad inferior: el mismo de la rareza, más oscuro y algo más saturado. */
+export function darker(hex: string): THREE.Color {
+  const c = new THREE.Color(hex);
+  const hsl = { h: 0, s: 0, l: 0 };
+  c.getHSL(hsl);
+  return new THREE.Color().setHSL(hsl.h, Math.min(1, hsl.s * 1.1), hsl.l * 0.55);
+}
+
 function topMaterial(rarity: Rarity) {
   return (topMaterials[rarity] ??= new THREE.MeshPhysicalMaterial({
     color: RARITY_HEX[rarity],
+    roughness: 0.3,
+    metalness: 0,
+    clearcoat: 0.8,
+    clearcoatRoughness: 0.2,
+    envMapIntensity: 0.6,
+  }));
+}
+
+function bottomMaterial(rarity: Rarity) {
+  return (bottomMaterials[rarity] ??= new THREE.MeshPhysicalMaterial({
+    color: darker(RARITY_HEX[rarity]),
     roughness: 0.35,
     metalness: 0,
-    clearcoat: 0.6,
-    clearcoatRoughness: 0.25,
-    envMapIntensity: 0.5,
+    clearcoat: 0.8,
+    clearcoatRoughness: 0.2,
+    envMapIntensity: 0.6,
   }));
 }
 
@@ -272,7 +292,7 @@ function DomeCapsules({ sim }: { sim: GachaSim }) {
       {sim.caps.map((c, i) => (
         <group key={i} ref={(el) => (refs.current[i] = el)}>
           <mesh geometry={GEO.domeTop} material={topMaterial(c.rarity)} />
-          <mesh geometry={GEO.domeBottom} material={MAT.capsuleBottom} />
+          <mesh geometry={GEO.domeBottom} material={bottomMaterial(c.rarity)} />
           <mesh geometry={GEO.domeSeam} material={MAT.seam} rotation={[Math.PI / 2, 0, 0]} />
         </group>
       ))}
@@ -286,7 +306,8 @@ function DropCapsule({ sim }: { sim: GachaSim }) {
   const root = useRef<THREE.Group>(null);
   const lid = useRef<THREE.Group>(null);
   const light = useRef<THREE.PointLight>(null);
-  const topMat = useMemo(() => new THREE.MeshPhysicalMaterial({ color: RARITY_HEX.comun, roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.25, envMapIntensity: 0.5, emissive: RARITY_HEX.comun, emissiveIntensity: 0 }), []);
+  const topMat = useMemo(() => new THREE.MeshPhysicalMaterial({ color: RARITY_HEX.comun, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.2, envMapIntensity: 0.6, emissive: RARITY_HEX.comun, emissiveIntensity: 0 }), []);
+  const bottomMat = useMemo(() => new THREE.MeshPhysicalMaterial({ color: darker(RARITY_HEX.comun), roughness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.2, envMapIntensity: 0.6 }), []);
   const last = useRef<Rarity | null>(null);
 
   useFrame(() => {
@@ -298,6 +319,7 @@ function DropCapsule({ sim }: { sim: GachaSim }) {
     if (last.current !== d.rarity) {
       topMat.color.set(RARITY_HEX[d.rarity]);
       topMat.emissive.set(RARITY_HEX[d.rarity]);
+      bottomMat.color.copy(darker(RARITY_HEX[d.rarity]));
       light.current?.color.set(RARITY_HEX[d.rarity]);
       last.current = d.rarity;
     }
@@ -316,7 +338,7 @@ function DropCapsule({ sim }: { sim: GachaSim }) {
 
   return (
     <group ref={root} visible={false}>
-      <mesh geometry={GEO.dropBottom} material={MAT.capsuleBottom} />
+      <mesh geometry={GEO.dropBottom} material={bottomMat} />
       <mesh geometry={GEO.dropSeam} material={MAT.seam} rotation={[Math.PI / 2, 0, 0]} />
       <group ref={lid}>
         <mesh geometry={GEO.dropTop} material={topMat} />

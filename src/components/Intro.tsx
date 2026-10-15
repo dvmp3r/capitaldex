@@ -83,7 +83,7 @@ export function Intro() {
                 <li key={r} className="flex items-center gap-2 text-sm">
                   <svg width="18" height="18" viewBox="-10 -10 20 20" aria-hidden="true">
                     <path d="M -9 0 A 9 9 0 0 1 9 0 Z" fill={`var(--color-${r})`} />
-                    <path d="M -9 0 A 9 9 0 0 0 9 0 Z" fill="white" />
+                    <path d="M -9 0 A 9 9 0 0 0 9 0 Z" fill={`var(--color-${r})`} opacity="0.55" />
                   </svg>
                   <span className="font-semibold">{rarityLabel(r)}</span>
                   <span className="num text-white/70">{fmtPct(GACHA_ODDS[r], 0)}</span>
