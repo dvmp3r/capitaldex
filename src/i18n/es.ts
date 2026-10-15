@@ -183,7 +183,7 @@ export const es = {
     multipliers: "Tus multiplicadores",
     noMultipliers: "Todavía sin titulares. El primero suele ser el más barato de tu sector más grande.",
     available: "En portada",
-    locked: "Próximos titulares",
+    locked: "Bloqueado",
     owned: "Hemeroteca",
     levelsBought: "{n} niveles comprados",
     level: "Nivel {n}/{max}",

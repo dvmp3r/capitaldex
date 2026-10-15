@@ -116,7 +116,9 @@ function SeriesRow({ s, level, cost, locked, canAfford, onBuy, done }: { s: Seri
       {done ? (
         <span className="num text-xs text-gold">{t("market.max")}</span>
       ) : locked ? (
-        <span className="num text-sm text-muted">{fmtCapital(cost)}</span>
+        <button disabled title={locked} className="btn-primary h-10 shrink-0 px-4 text-sm opacity-45 grayscale">
+          {t("market.locked")} <span className="num font-semibold opacity-90">{fmtCapital(cost)}</span>
+        </button>
       ) : (
         <button onClick={onBuy} disabled={!canAfford} className="btn-primary h-10 shrink-0 px-4 text-sm">
           {t("market.levelUp")} <span className="num font-semibold opacity-90">{fmtCapital(cost)}</span>

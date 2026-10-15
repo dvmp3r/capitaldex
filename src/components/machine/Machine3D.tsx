@@ -21,7 +21,6 @@ const RARITY_COLOR: Record<Rarity, THREE.Color> = {
 };
 
 const MAX_PARTICLES = 40;
-const IDLE_FPS = 24;
 
 /**
  * Máquina gashapon en 3D estilizado (three.js plano, sin entorno ni refracción).
@@ -33,13 +32,17 @@ const IDLE_FPS = 24;
 export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ dimmed = false, className = "" }, ref) {
   const sim = useMemo(() => new GachaSim(), []);
   const mount = useRef<HTMLDivElement>(null);
+  /** Hay que volver a dibujar (cambios fuera del paso de simulación: skip/reset, tamaño). */
+  const dirty = useRef(true);
+  /** Dibuja un fotograma ahora mismo (para skip/reset, que cambian el estado sin animación). */
+  const draw = useRef<() => void>(() => {});
 
   useImperativeHandle(ref, () => ({
     turn: () => sim.turn(),
     drop: (r) => sim.drop(r),
     open: () => sim.open(),
-    reset: () => sim.reset(),
-    skip: (r) => sim.skip(r),
+    reset: () => { sim.reset(); draw.current(); },
+    skip: (r) => { sim.skip(r); draw.current(); },
   }), [sim]);
 
   useEffect(() => {
@@ -95,17 +98,17 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     const FRONT = D / 2; // z de la cara delantera
 
     // Pie con bandeja delante (la cápsula cae ahí)
-    add(new RoundedBoxGeometry(W + 0.16, 0.28, D + 0.9, 3, 0.06), dark, 0, 0.14, 0.45);
-    add(new RoundedBoxGeometry(W + 0.1, 0.05, D + 0.84, 2, 0.02), steel, 0, 0.285, 0.45);
+    add(new RoundedBoxGeometry(W + 0.16, 0.26, D + 0.9, 3, 0.06), dark, 0, 0.15, 0.45);
+    add(new RoundedBoxGeometry(W + 0.1, 0.05, D + 0.84, 2, 0.02), steel, 0, 0.295, 0.45);
     // Cuerpo rojo inferior
-    add(new RoundedBoxGeometry(W, 1.78, D, 4, 0.1), red, 0, 1.19, 0);
+    add(new RoundedBoxGeometry(W, 1.76, D, 4, 0.1), red, 0, 1.2, 0);
     // Marco entre cuerpo y vitrina
     add(new RoundedBoxGeometry(W + 0.06, 0.1, D + 0.06, 2, 0.03), redDark, 0, cm.y - 0.05, 0);
     // Vitrina de cristal
     const chamberH = cM.y - cm.y;
     const chamberY = (cm.y + cM.y) / 2;
-    const chamber = new THREE.Mesh(new RoundedBoxGeometry(W - 0.1, chamberH, D - 0.1, 3, 0.08), glass);
-    chamber.position.set(0, chamberY, 0);
+    const chamber = new THREE.Mesh(new RoundedBoxGeometry(W - 0.1, chamberH - 0.02, D - 0.1, 3, 0.08), glass);
+    chamber.position.set(0, chamberY + 0.01, 0);
     chamber.renderOrder = 10;
     machine.add(chamber);
     const chamberEdge = new THREE.Mesh(new RoundedBoxGeometry(W - 0.08, chamberH + 0.02, D - 0.08, 3, 0.09), glassEdge);
@@ -113,7 +116,7 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     chamberEdge.renderOrder = 9;
     machine.add(chamberEdge);
     // Suelo oscuro de la vitrina y esquinas (para que el cristal se lea como caja)
-    add(new THREE.BoxGeometry(W - 0.12, 0.04, D - 0.12), dark, 0, cm.y - 0.02, 0);
+    add(new THREE.BoxGeometry(W - 0.16, 0.04, D - 0.16), dark, 0, cm.y + 0.03, 0);
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.BoxGeometry(0.05, chamberH, 0.05), chrome, sx * (W / 2 - 0.06), chamberY, sz * (D / 2 - 0.06));
     // Tapa superior
     add(new RoundedBoxGeometry(W + 0.06, 0.34, D + 0.06, 3, 0.09), red, 0, cM.y + 0.17, 0);
@@ -150,11 +153,11 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
 
     // Boca de salida: hueco oscuro con arco, bajo el mando
     const mouthY = 0.85;
-    add(new THREE.BoxGeometry(0.62, 0.5, 0.5), dark, 0, mouthY - 0.1, FRONT - 0.2);
-    const arch = add(new THREE.CylinderGeometry(0.31, 0.31, 0.5, 24, 1, false, 0, Math.PI), dark, 0, mouthY + 0.15, FRONT - 0.2);
+    add(new THREE.BoxGeometry(0.62, 0.5, 0.56), dark, 0, mouthY - 0.1, FRONT - 0.18);
+    const arch = add(new THREE.CylinderGeometry(0.31, 0.31, 0.58, 24, 1, false, 0, Math.PI), dark, 0, mouthY + 0.15, FRONT - 0.18);
     arch.rotation.x = Math.PI / 2;
     arch.rotation.z = Math.PI / 2;
-    add(new THREE.BoxGeometry(0.66, 0.04, 0.06), chrome, 0, mouthY - 0.35, FRONT + 0.02); // labio
+    add(new THREE.BoxGeometry(0.66, 0.04, 0.08), chrome, 0, mouthY - 0.37, FRONT + 0.08); // labio
 
     // Sombra de contacto
     const shadowTex = (() => {
@@ -170,7 +173,7 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     })();
     const shadow = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 3.6), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
     shadow.rotation.x = -Math.PI / 2;
-    shadow.position.set(0, 0.004, 0.4);
+    shadow.position.set(0, 0.002, 0.4);
     scene.add(shadow);
 
     // Cápsulas de la vitrina: dos mallas instanciadas (mitad de color + mitad transparente)
@@ -260,12 +263,19 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       }
     };
 
+    draw.current = () => {
+      sync();
+      renderer.render(scene, camera);
+      dirty.current = false;
+    };
+
     const resize = () => {
       const w = el.clientWidth || 1;
       const h = el.clientHeight || 1;
       renderer.setSize(w, h, false);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
+      dirty.current = true;
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -273,7 +283,6 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
 
     let last = performance.now();
     let lastFrame = 0;
-    let lastDraw = 0;
     let raf = 0;
     let disposed = false;
 
@@ -284,11 +293,9 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       last = now;
       lastFrame = now;
       sim.step(dt);
-      if (!sim.busy() && now - lastDraw < 1000 / IDLE_FPS) return;
-      lastDraw = now;
-      const t = now / 1000;
-      camera.position.set(camBase.x + Math.sin(t * 0.3) * 0.2, camBase.y + Math.sin(t * 0.45) * 0.06, camBase.z);
-      camera.lookAt(lookAt);
+      // En reposo no se dibuja nada: cámara quieta, sin temblores ni consumo.
+      if (!sim.busy() && !dirty.current) return;
+      dirty.current = sim.busy();
       sync();
       renderer.render(scene, camera);
     };
@@ -308,6 +315,7 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       window.clearInterval(ticker);
       ro.disconnect();
       renderer.dispose();
+      draw.current = () => {};
       scene.traverse((o) => {
         const m = o as THREE.Mesh;
         if (m.geometry) m.geometry.dispose();
