@@ -1,0 +1,185 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  /* Superficies: blanco puro; los neutros llevan una pizca del tono de marca (353°). */
+  --color-bg: oklch(1 0 0);
+  --color-surface: oklch(0.975 0.005 353);
+  --color-surface-2: oklch(0.95 0.008 353);
+  --color-line: oklch(0.9 0.01 353);
+  --color-line-strong: oklch(0.8 0.015 353);
+  --color-ink: oklch(0.2 0.015 353);
+  --color-muted: oklch(0.47 0.025 353);
+
+  /* Marca: frambuesa. */
+  --color-brand: oklch(0.56 0.22 353);
+  --color-brand-strong: oklch(0.48 0.21 353);
+  --color-brand-soft: oklch(0.955 0.03 353);
+
+  /* Semánticos */
+  --color-up: oklch(0.52 0.17 150);
+  --color-up-soft: oklch(0.955 0.045 150);
+
+  /* Rarezas (marco) y su variante para texto sobre blanco */
+  --color-comun: oklch(0.72 0.01 353);
+  --color-comun-ink: oklch(0.47 0.015 353);
+  --color-poco_comun: oklch(0.68 0.15 160);
+  --color-poco_comun-ink: oklch(0.47 0.14 160);
+  --color-rara: oklch(0.6 0.18 255);
+  --color-rara-ink: oklch(0.48 0.18 255);
+  --color-epica: oklch(0.6 0.22 300);
+  --color-epica-ink: oklch(0.48 0.2 300);
+  --color-legendaria: oklch(0.78 0.16 85);
+  --color-legendaria-ink: oklch(0.52 0.13 78);
+
+  --radius-card: 16px;
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html, body, #root { height: 100%; }
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3 { text-wrap: balance; }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+/* ---------- Cartas ---------- */
+.card {
+  --frame: var(--color-comun);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  aspect-ratio: 5 / 7;
+  border-radius: var(--radius-card);
+  background: var(--color-bg);
+  box-shadow: 0 0 0 1.5px var(--frame) inset, 0 1px 2px oklch(0 0 0 / 0.06), 0 8px 24px -12px oklch(0 0 0 / 0.25);
+  padding: 12px;
+  overflow: hidden;
+  transition: transform 200ms var(--ease-out-quint), box-shadow 200ms var(--ease-out-quint);
+}
+.card[data-rarity="poco_comun"] { --frame: var(--color-poco_comun); }
+.card[data-rarity="rara"] { --frame: var(--color-rara); }
+.card[data-rarity="epica"] { --frame: var(--color-epica); }
+.card[data-rarity="legendaria"] {
+  --frame: var(--color-legendaria);
+  box-shadow: 0 0 0 2.5px var(--frame) inset, 0 1px 2px oklch(0 0 0 / 0.06), 0 12px 32px -12px oklch(0.78 0.16 85 / 0.6);
+}
+.card[data-rarity="legendaria"]::after {
+  /* Lámina: un brillo que recorre la carta. Solo las legendarias. */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, oklch(0.95 0.08 90 / 0.55) 48%, oklch(1 0 0 / 0.7) 50%, oklch(0.95 0.08 90 / 0.55) 52%, transparent 65%);
+  background-size: 250% 100%;
+  animation: foil 3.2s linear infinite;
+  mix-blend-mode: soft-light;
+}
+.card.is-hidden {
+  background: var(--color-surface);
+  box-shadow: 0 0 0 1.5px var(--frame) inset;
+}
+.card.is-hidden .card-art { opacity: 0.35; filter: grayscale(1); }
+.card-interactive:hover { transform: translateY(-2px); }
+
+@keyframes foil {
+  from { background-position: 125% 0; }
+  to { background-position: -125% 0; }
+}
+
+/* ---------- Cartera: dorso y volteo ---------- */
+.flip-scene { perspective: 1200px; }
+.flip-inner {
+  position: relative;
+  transform-style: preserve-3d;
+  animation: flip-in 780ms var(--ease-out-quint) both;
+}
+.flip-inner.is-static { animation: none; }
+.flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.flip-back { position: absolute; inset: 0; transform: rotateY(180deg); }
+@keyframes flip-in {
+  0%   { transform: rotateY(180deg) scale(0.96); }
+  45%  { transform: rotateY(180deg) scale(1.02); }
+  100% { transform: rotateY(0deg) scale(1); }
+}
+
+.card-back {
+  aspect-ratio: 5 / 7;
+  border-radius: var(--radius-card);
+  background-color: var(--color-brand);
+  background-image:
+    radial-gradient(circle at 50% 50%, oklch(1 0 0 / 0.14) 0 2px, transparent 2.5px),
+    repeating-linear-gradient(45deg, oklch(1 0 0 / 0.07) 0 2px, transparent 2px 14px);
+  background-size: 18px 18px, auto;
+  box-shadow: 0 0 0 1.5px oklch(1 0 0 / 0.35) inset, 0 0 0 8px var(--color-brand) inset, 0 12px 32px -14px oklch(0.56 0.22 353 / 0.7);
+  color: white;
+  display: grid;
+  place-items: center;
+  transition: transform 200ms var(--ease-out-quint), box-shadow 200ms var(--ease-out-quint);
+}
+.card-back-ready:hover { transform: translateY(-3px) rotate(-1deg); }
+
+/* ---------- Revelado ---------- */
+.rise { animation: rise 420ms var(--ease-out-quint) both; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- Controles ---------- */
+.control {
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--color-line-strong);
+  background: var(--color-bg);
+  color: var(--color-ink);
+  padding: 0 10px;
+  font-size: 13px;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+.control:hover { border-color: oklch(0.65 0.03 353); }
+.control:focus-visible { outline: none; border-color: var(--color-brand); box-shadow: 0 0 0 3px var(--color-brand-soft); }
+.control::placeholder { color: var(--color-muted); }
+
+.btn-primary {
+  background: var(--color-brand);
+  color: white;
+  border-radius: 10px;
+  font-weight: 700;
+  transition: background-color 150ms, transform 120ms var(--ease-out-quint), box-shadow 150ms;
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.1), 0 6px 16px -8px oklch(0.56 0.22 353 / 0.7);
+}
+.btn-primary:hover:not(:disabled) { background: var(--color-brand-strong); }
+.btn-primary:active:not(:disabled) { transform: translateY(1px) scale(0.99); }
+.btn-primary:disabled { background: var(--color-surface-2); color: var(--color-muted); box-shadow: none; cursor: not-allowed; }
+.btn-primary:focus-visible { outline: 3px solid var(--color-brand-soft); outline-offset: 1px; }
+
+.btn-ghost {
+  border-radius: 10px;
+  font-weight: 600;
+  color: var(--color-ink);
+  border: 1px solid var(--color-line-strong);
+  background: var(--color-bg);
+  transition: background-color 150ms, border-color 150ms, transform 120ms var(--ease-out-quint);
+}
+.btn-ghost:hover { background: var(--color-surface); }
+.btn-ghost:active { transform: translateY(1px); }
+
+.meter { height: 4px; border-radius: 999px; background: var(--color-surface-2); overflow: hidden; }
+.meter > i { display: block; height: 100%; border-radius: inherit; transition: width 300ms var(--ease-out-quint); }
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-inner { animation: flip-fade 250ms ease-out both; }
+  .card[data-rarity="legendaria"]::after { animation: none; opacity: 0.35; }
+  .rise { animation: rise-fade 200ms ease-out both; }
+  .card-back-ready:hover, .card-interactive:hover { transform: none; }
+  @keyframes flip-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes rise-fade { from { opacity: 0; } to { opacity: 1; } }
+}
