@@ -78,13 +78,13 @@ export function CompanyCard({ company, shares = 0, hidden = false, size = "lg", 
         )}
 
         {shares > 0 && (
-          <div className={`num mt-2 flex items-end justify-between border-t border-line pt-2 ${big ? "text-sm" : "text-[12px]"}`}>
-            <div>
+          <div className={`num mt-2 flex flex-wrap items-end justify-between gap-x-2 border-t border-line pt-2 ${big ? "text-sm" : "text-[12px]"}`}>
+            <div className="whitespace-nowrap">
               <span className="text-muted">{t("card.shares")} </span>
               <span className="font-bold">{shares}</span>
               {next && <span className="ml-1 text-[10px] text-muted">/ {next.shares} → ×{next.mult}</span>}
             </div>
-            <div className="font-bold text-up">+{fmt(companyIncome(company, shares))}/s</div>
+            <div className="ml-auto whitespace-nowrap font-bold text-up">+{fmt(companyIncome(company, shares))}/s</div>
           </div>
         )}
       </footer>
