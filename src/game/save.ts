@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { SAVE_VERSION } from "./balance";
 import { hashString } from "./hash";
 import type { SaveData } from "./types";
@@ -16,32 +17,32 @@ export function parseSave(text: string): ParseResult {
   try {
     raw = JSON.parse(text);
   } catch {
-    return { ok: false, error: "El archivo no es un JSON válido." };
+    return { ok: false, error: t("save.notJson") };
   }
   if (!isRecord(raw) || raw.app !== "capitaldex" || !isRecord(raw.data)) {
-    return { ok: false, error: "El archivo no es una partida de CapitalDex." };
+    return { ok: false, error: t("save.notSave") };
   }
   if (raw.checksum !== hashString(JSON.stringify(raw.data))) {
-    return { ok: false, error: "La partida está dañada o ha sido modificada." };
+    return { ok: false, error: t("save.corrupt") };
   }
   const d = raw.data;
   if (typeof d.version !== "number" || d.version > SAVE_VERSION) {
-    return { ok: false, error: "La partida es de una versión más nueva del juego." };
+    return { ok: false, error: t("save.newerVersion") };
   }
   const nums: (keyof SaveData)[] = ["savedAt", "capital", "totalEarned", "lastTick"];
   for (const k of nums) {
-    if (!isFiniteNumber(d[k]) || (d[k] as number) < 0) return { ok: false, error: `Campo inválido: ${k}.` };
+    if (!isFiniteNumber(d[k]) || (d[k] as number) < 0) return { ok: false, error: t("save.invalidField", { field: k }) };
   }
   if (!isRecord(d.gacha) || !isInt(d.gacha.pulls) || !isInt(d.gacha.sinceEpic) || !isInt(d.gacha.sinceLegendary)) {
-    return { ok: false, error: "Campo inválido: gacha." };
+    return { ok: false, error: t("save.invalidField", { field: "gacha" }) };
   }
   if (!isRecord(d.stats) || !isInt(d.stats.clicks) || !isFiniteNumber(d.stats.playSeconds) || !isFiniteNumber(d.stats.startedAt) || !isInt(d.stats.bestRarityRank)) {
-    return { ok: false, error: "Campo inválido: stats." };
+    return { ok: false, error: t("save.invalidField", { field: "stats" }) };
   }
-  if (!isRecord(d.holdings)) return { ok: false, error: "Campo inválido: holdings." };
+  if (!isRecord(d.holdings)) return { ok: false, error: t("save.invalidField", { field: "holdings" }) };
   for (const [id, h] of Object.entries(d.holdings)) {
     if (!isRecord(h) || !isInt(h.shares) || h.shares < 1 || !isFiniteNumber(h.firstAt)) {
-      return { ok: false, error: `Empresa inválida en la partida: ${id}.` };
+      return { ok: false, error: t("save.invalidCompany", { id }) };
     }
   }
   return { ok: true, data: d as unknown as SaveData };

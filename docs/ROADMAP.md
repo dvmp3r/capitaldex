@@ -24,7 +24,7 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [x] Botón Operar y progreso offline (15-oct-2026)
 - [x] Guardado local versionado, exportar e importar partida (15-oct-2026)
 - [x] Ajustes: sonido (sintetizado, sin archivos) y animaciones reducidas (15-oct-2026)
-- [ ] Idioma preparado: extraer los textos a `src/i18n/es.ts` con una función `t()` para añadir inglés en la fase 2
+- [x] Idioma preparado: textos en `src/i18n/es.ts` con `t()` tipado (15-oct-2026). Pendiente para la fase 2: nombres de sector y de país vienen de los datos, habrá que darles clave también.
 - [x] Animación de apertura con variante legendaria (15-oct-2026)
 - [x] Tutorial de 3 tiradas gratis: pistas contextuales en las primeras carteras (15-oct-2026)
 - [x] Pantalla de estadísticas (tiradas, tiempo jugado, mejor tirada) (15-oct-2026)

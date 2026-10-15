@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { saveFilename } from "../game/save";
+import { t } from "../i18n";
 import { useGame } from "../store/gameStore";
 
 /** Menú: ajustes y partida (exportar, importar, reiniciar). */
@@ -16,8 +17,8 @@ export function SaveMenu() {
   // El aviso desaparece solo y el menú se cierra al pulsar fuera.
   useEffect(() => {
     if (!msg) return;
-    const t = window.setTimeout(() => setMsg(null), 4500);
-    return () => window.clearTimeout(t);
+    const id = window.setTimeout(() => setMsg(null), 4500);
+    return () => window.clearTimeout(id);
   }, [msg]);
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -39,47 +40,48 @@ export function SaveMenu() {
     a.download = saveFilename();
     a.click();
     URL.revokeObjectURL(url);
-    setMsg({ text: "Partida exportada.", ok: true });
+    setMsg({ text: t("menu.exported"), ok: true });
     close();
   };
 
   const onImportFile = async (f: File | undefined) => {
     if (!f) return;
     const r = importSave(await f.text());
-    setMsg(r.ok ? { text: "Partida importada.", ok: true } : { text: r.error, ok: false });
+    setMsg(r.ok ? { text: t("menu.imported"), ok: true } : { text: r.error, ok: false });
     if (file.current) file.current.value = "";
     close();
   };
 
   const onReset = () => {
     close();
-    if (window.confirm("¿Borrar la partida? No se puede deshacer. Exporta antes si quieres conservarla.")) {
+    if (window.confirm(t("menu.resetConfirm"))) {
       reset();
-      setMsg({ text: "Partida reiniciada.", ok: true });
+      setMsg({ text: t("menu.resetDone"), ok: true });
     }
   };
 
   const item = "block w-full px-3 py-2 text-left text-sm hover:bg-surface";
+  const heading = "px-3 pb-1 pt-2 text-[11px] font-semibold text-muted";
 
   return (
     <div className="relative">
       <details ref={details} className="group">
-        <summary className="btn-ghost flex h-9 cursor-pointer list-none items-center gap-1.5 px-3 text-sm sm:h-10 [&::-webkit-details-marker]:hidden" aria-label="Menú">
-          <span className="hidden sm:inline">Menú</span>
+        <summary className="btn-ghost flex h-9 cursor-pointer list-none items-center gap-1.5 px-3 text-sm sm:h-10 [&::-webkit-details-marker]:hidden" aria-label={t("menu.open")}>
+          <span className="hidden sm:inline">{t("menu.open")}</span>
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="transition-transform group-open:rotate-180">
             <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </summary>
         <div className="absolute right-0 top-[calc(100%+6px)] z-30 w-60 overflow-hidden rounded-xl border border-line bg-bg py-1 shadow-[0_12px_32px_-12px_oklch(0_0_0/0.3)]">
-          <div className="px-3 pb-1 pt-2 text-[11px] font-semibold text-muted">Ajustes</div>
-          <Toggle label="Sonido" checked={settings.sound} onChange={(v) => setSetting("sound", v)} />
-          <Toggle label="Animaciones reducidas" checked={settings.reducedMotion} onChange={(v) => setSetting("reducedMotion", v)} />
+          <div className={heading}>{t("menu.settings")}</div>
+          <Toggle label={t("menu.sound")} checked={settings.sound} onChange={(v) => setSetting("sound", v)} />
+          <Toggle label={t("menu.reducedMotion")} checked={settings.reducedMotion} onChange={(v) => setSetting("reducedMotion", v)} />
           <div className="my-1 border-t border-line" />
-          <div className="px-3 pb-1 pt-2 text-[11px] font-semibold text-muted">Partida</div>
-          <button className={item} onClick={onExport}>Exportar partida</button>
-          <button className={item} onClick={() => file.current?.click()}>Importar partida…</button>
+          <div className={heading}>{t("menu.game")}</div>
+          <button className={item} onClick={onExport}>{t("menu.export")}</button>
+          <button className={item} onClick={() => file.current?.click()}>{t("menu.import")}</button>
           <div className="my-1 border-t border-line" />
-          <button className={`${item} text-brand`} onClick={onReset}>Reiniciar partida</button>
+          <button className={`${item} text-brand`} onClick={onReset}>{t("menu.reset")}</button>
         </div>
       </details>
       <input ref={file} type="file" accept="application/json,.json" className="hidden" onChange={(e) => onImportFile(e.target.files?.[0])} />

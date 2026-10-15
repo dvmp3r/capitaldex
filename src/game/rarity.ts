@@ -1,13 +1,10 @@
+import { t } from "../i18n";
 import { RARITY_THRESHOLDS_USD } from "./balance";
 import type { Company, Rarity } from "./types";
 
-export const RARITY_LABEL: Record<Rarity, string> = {
-  comun: "Común",
-  poco_comun: "Poco común",
-  rara: "Rara",
-  epica: "Épica",
-  legendaria: "Legendaria",
-};
+export function rarityLabel(r: Rarity): string {
+  return t(`rarity.${r}`);
+}
 
 export const RARITY_RANK: Record<Rarity, number> = {
   comun: 0,
