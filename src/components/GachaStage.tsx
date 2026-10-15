@@ -4,7 +4,7 @@ import type { PullResult } from "../game/types";
 import { t } from "../i18n";
 import { useGame } from "../store/gameStore";
 import { CompanyCard } from "./CompanyCard";
-import { PixelMachine, type MachineHandle } from "./pixel/PixelMachine";
+import { Machine2D, type MachineHandle } from "./machine/Machine2D";
 
 export type StagePhase = "idle" | "turning" | "dropping" | "opening" | "revealed";
 
@@ -103,7 +103,7 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
       data-legendary={phase === "revealed" && result?.rarity === "legendaria" ? "true" : undefined}
     >
       <div className="stage-light" />
-      <PixelMachine ref={machine} dimmed={phase === "revealed"} idle={phase === "idle" || phase === "revealed"} className="h-full w-full" />
+      <Machine2D ref={machine} dimmed={phase === "revealed"} idle={phase === "idle" || phase === "revealed"} className="h-full w-full" />
       {phase === "revealed" && result && (
         <div key={revealKey} className="card-rise absolute inset-[4%]">
           <CompanyCard company={result.company} shares={result.shares} size="lg" className="h-full w-full shadow-[0_30px_60px_-20px_oklch(0_0_0/0.9)]" />

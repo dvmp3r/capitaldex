@@ -128,7 +128,7 @@ h1, h2, h3 { text-wrap: balance; }
 }
 
 .machine { overflow: visible; }
-.pixel-canvas { image-rendering: pixelated; image-rendering: crisp-edges; object-fit: contain; }
+
 .machine-knob, .machine-cap, .machine-caps, .machine-flash, .machine-spark { transform-box: fill-box; transform-origin: center; }
 .machine-drop { transform-box: view-box; }
 .machine-dimmed { filter: brightness(0.45) blur(2px); transform: scale(0.94); transition: filter 500ms var(--ease-out-quint), transform 500ms var(--ease-out-quint); }
