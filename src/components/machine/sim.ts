@@ -77,6 +77,8 @@ export class GachaSim {
   time = 0;
   private rng = mulberry32(7);
   private timers: { at: number; resolve: () => void }[] = [];
+  /** Hasta cuándo se considera agitada la vitrina (para seguir dibujando tras una sacudida). */
+  private shakeUntil = 0;
   private glowPhase: { start: number; dur: number } | null = null;
   private lidPhase: { start: number; dur: number } | null = null;
 
@@ -102,7 +104,19 @@ export class GachaSim {
 
   /** ¿Hay algo moviéndose o alguna fase pendiente? (la escena baja los fps cuando no) */
   busy(): boolean {
-    return this.stir > 0 || this.crank.t < 1 || (this.capsule.active && !this.capsule.settled) || this.particles.length > 0 || this.capsule.glow > 0.01 || this.timers.length > 0;
+    return this.time < this.shakeUntil || this.stir > 0 || this.crank.t < 1 || (this.capsule.active && !this.capsule.settled) || this.particles.length > 0 || this.capsule.glow > 0.01 || this.timers.length > 0;
+  }
+
+  /** Sacudida visual: empuja todas las cápsulas (con algo de azar) y mantiene la escena viva unos segundos. */
+  nudge(ax: number, ay: number, az: number) {
+    for (const b of this.caps) {
+      b.v.x += ax * (0.6 + this.rng() * 0.8);
+      b.v.y += ay * (0.6 + this.rng() * 0.8);
+      b.v.z += az * (0.6 + this.rng() * 0.8);
+      const sp = Math.hypot(b.v.x, b.v.y, b.v.z);
+      if (sp > 7) { b.v.x *= 7 / sp; b.v.y *= 7 / sp; b.v.z *= 7 / sp; }
+    }
+    this.shakeUntil = this.time + 3;
   }
 
   /** Promesa que se resuelve cuando el reloj de la simulación llegue a `seconds` desde ahora. */

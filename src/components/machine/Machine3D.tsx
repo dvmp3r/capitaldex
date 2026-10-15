@@ -82,7 +82,6 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     const white = new THREE.MeshPhongMaterial({ color: 0xf2f2f2, specular: 0x666666, shininess: 40 });
     const glass = new THREE.MeshPhongMaterial({ color: 0xdfeaff, specular: 0xffffff, shininess: 150, transparent: true, opacity: 0.14, depthWrite: false });
     const glassEdge = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, side: THREE.BackSide, depthWrite: false });
-    const clear = new THREE.MeshPhongMaterial({ color: 0xf4f8ff, specular: 0xffffff, shininess: 120, transparent: true, opacity: 0.3, depthWrite: false });
 
     const machine = new THREE.Group();
     scene.add(machine);
@@ -120,7 +119,24 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.BoxGeometry(0.05, chamberH, 0.05), chrome, sx * (W / 2 - 0.06), chamberY, sz * (D / 2 - 0.06));
     // Tapa superior
     add(new RoundedBoxGeometry(W + 0.06, 0.34, D + 0.06, 3, 0.09), red, 0, cM.y + 0.17, 0);
-    add(new RoundedBoxGeometry(W - 0.5, 0.16, 0.06, 2, 0.03), white, 0, cM.y + 0.19, FRONT + 0.02); // rótulo
+    add(new RoundedBoxGeometry(W - 0.5, 0.18, 0.06, 2, 0.03), white, 0, cM.y + 0.19, FRONT + 0.02); // rótulo
+    const labelTex = (() => {
+      const cv = document.createElement("canvas");
+      cv.width = 512;
+      cv.height = 64;
+      const g = cv.getContext("2d")!;
+      g.fillStyle = "#1c1c1f";
+      g.font = '700 44px "Bricolage Grotesque", "Segoe UI", sans-serif';
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText("CAPITALDEX", 256, 34);
+      const tex = new THREE.CanvasTexture(cv);
+      tex.anisotropy = 4;
+      return tex;
+    })();
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.1625), new THREE.MeshBasicMaterial({ map: labelTex, transparent: true }));
+    label.position.set(0, cM.y + 0.19, FRONT + 0.056);
+    machine.add(label);
     add(new THREE.CylinderGeometry(0.22, 0.26, 0.1, 24), chrome, 0, cM.y + 0.39, 0);
 
     // Placa cromada delantera con el mando y la boca
@@ -176,33 +192,26 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     shadow.position.set(0, 0.002, 0.4);
     scene.add(shadow);
 
-    // Cápsulas de la vitrina: dos mallas instanciadas (mitad de color + mitad transparente)
+    // Cápsulas de la vitrina: una malla instanciada, un color por cápsula
     const r = GEOM.capR;
-    // La mitad de color es algo más de media esfera para que el color domine.
-    const SPLIT = Math.PI * 0.42;
-    const lowerGeo = new THREE.SphereGeometry(r, 16, 8, 0, Math.PI * 2, SPLIT, Math.PI - SPLIT);
-    const upperGeo = new THREE.SphereGeometry(r * 0.985, 16, 8, 0, Math.PI * 2, 0, SPLIT);
-    const capMat = new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x999999, shininess: 60 });
-    const capsLower = new THREE.InstancedMesh(lowerGeo, capMat, sim.caps.length);
-    const capsUpper = new THREE.InstancedMesh(upperGeo, clear, sim.caps.length);
-    capsLower.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    capsUpper.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    capsUpper.renderOrder = 5;
-    sim.caps.forEach((cp, i) => capsLower.setColorAt(i, RARITY_COLOR[cp.rarity]));
-    machine.add(capsLower, capsUpper);
+    const capMat = new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0xcccccc, shininess: 80 });
+    const caps = new THREE.InstancedMesh(new THREE.SphereGeometry(r, 18, 12), capMat, sim.caps.length);
+    caps.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    sim.caps.forEach((cp, i) => caps.setColorAt(i, RARITY_COLOR[cp.rarity]));
+    machine.add(caps);
 
     // Cápsula que cae: mitad inferior de color, tapa transparente que se abre, luz propia
     const drop = new THREE.Group();
     drop.visible = false;
     const dropMat = new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0xffffff, shininess: 90, emissive: 0x000000 });
     const dR = GEOM.dropR;
-    const lower = new THREE.Mesh(new THREE.SphereGeometry(dR, 28, 14, 0, Math.PI * 2, SPLIT, Math.PI - SPLIT), dropMat);
+    const lower = new THREE.Mesh(new THREE.SphereGeometry(dR, 28, 14, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), dropMat);
     const lowerCap = new THREE.Mesh(new THREE.CircleGeometry(dR, 28), dropMat);
     lowerCap.rotation.x = -Math.PI / 2;
-    lowerCap.position.y = dR * Math.cos(SPLIT);
-    lowerCap.scale.setScalar(Math.sin(SPLIT));
-    const upper = new THREE.Mesh(new THREE.SphereGeometry(dR, 28, 14, 0, Math.PI * 2, 0, SPLIT), clear.clone());
-    upper.renderOrder = 6;
+    const upper = new THREE.Mesh(new THREE.SphereGeometry(dR, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), dropMat);
+    const upperCap = new THREE.Mesh(new THREE.CircleGeometry(dR, 28), dropMat);
+    upperCap.rotation.x = Math.PI / 2;
+    upper.add(upperCap);
     drop.add(lower, lowerCap, upper);
     const dropLight = new THREE.PointLight(0xffffff, 0, 3, 2);
     dropLight.position.y = 0.2;
@@ -215,6 +224,55 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     parts.count = 0;
     machine.add(parts);
 
+    // Vista: arrastrar gira la máquina (vuelve sola al frente) y sacude las cápsulas.
+    const view = { yaw: 0, pitch: 0, yawT: 0, pitchT: 0, dragging: false, dragged: false, x: 0, y: 0, t: 0 };
+    const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+    const canvas = renderer.domElement;
+    canvas.style.touchAction = "pan-y";
+    const onDown = (e: PointerEvent) => {
+      if (e.button !== 0 && e.pointerType === "mouse") return;
+      view.dragging = true;
+      view.dragged = false;
+      view.x = e.clientX;
+      view.y = e.clientY;
+      view.t = performance.now();
+      canvas.setPointerCapture(e.pointerId);
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!view.dragging) return;
+      const dx = e.clientX - view.x;
+      const dy = e.clientY - view.y;
+      if (Math.abs(dx) + Math.abs(dy) > 4) view.dragged = true;
+      view.yawT = clamp(view.yawT + dx * 0.008, -0.8, 0.8);
+      view.pitchT = clamp(view.pitchT + dy * 0.004, -0.25, 0.3);
+      const now = performance.now();
+      const dt = Math.max(8, now - view.t) / 1000;
+      const vx = dx / dt; // px/s
+      if (Math.abs(vx) > 150) sim.nudge(clamp(-vx * 0.004, -3, 3), Math.min(2.5, Math.abs(vx) * 0.0025), 0);
+      view.x = e.clientX;
+      view.y = e.clientY;
+      view.t = now;
+      canvas.style.cursor = "grabbing";
+    };
+    const onUp = () => {
+      view.dragging = false;
+      view.yawT = 0;
+      view.pitchT = 0;
+      canvas.style.cursor = "";
+    };
+    // Un arrastre no debe contar como clic en la máquina (abrir cartera / saltar animación).
+    const onClick = (e: MouseEvent) => {
+      if (view.dragged) {
+        e.stopPropagation();
+        view.dragged = false;
+      }
+    };
+    canvas.addEventListener("pointerdown", onDown);
+    canvas.addEventListener("pointermove", onMove);
+    canvas.addEventListener("pointerup", onUp);
+    canvas.addEventListener("pointercancel", onUp);
+    canvas.addEventListener("click", onClick);
+
     const tmp = new THREE.Object3D();
     const tmpColor = new THREE.Color();
     const whiteC = new THREE.Color(0xffffff);
@@ -223,14 +281,13 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       for (let i = 0; i < sim.caps.length; i++) {
         const cp = sim.caps[i];
         tmp.position.set(cp.p.x, cp.p.y, cp.p.z);
-        tmp.rotation.set(cp.rot.x * 0.5, cp.rot.y, cp.rot.z * 0.5);
+        tmp.rotation.set(cp.rot.x, cp.rot.y, cp.rot.z);
         tmp.scale.setScalar(1);
         tmp.updateMatrix();
-        capsLower.setMatrixAt(i, tmp.matrix);
-        capsUpper.setMatrixAt(i, tmp.matrix);
+        caps.setMatrixAt(i, tmp.matrix);
       }
-      capsLower.instanceMatrix.needsUpdate = true;
-      capsUpper.instanceMatrix.needsUpdate = true;
+      caps.instanceMatrix.needsUpdate = true;
+      machine.rotation.set(view.pitch, view.yaw, 0);
       knob.rotation.z = -sim.crank.angle;
 
       const d = sim.capsule;
@@ -293,9 +350,15 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       last = now;
       lastFrame = now;
       sim.step(dt);
+      // Giro de la vista con muelle de vuelta al frente
+      const k = Math.min(1, dt * (view.dragging ? 14 : 5));
+      view.yaw += (view.yawT - view.yaw) * k;
+      view.pitch += (view.pitchT - view.pitch) * k;
+      const turning = view.dragging || Math.abs(view.yawT - view.yaw) > 0.002 || Math.abs(view.pitchT - view.pitch) > 0.002;
       // En reposo no se dibuja nada: cámara quieta, sin temblores ni consumo.
-      if (!sim.busy() && !dirty.current) return;
-      dirty.current = sim.busy();
+      const live = sim.busy() || turning;
+      if (!live && !dirty.current) return;
+      dirty.current = live;
       sync();
       renderer.render(scene, camera);
     };
@@ -316,6 +379,12 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       ro.disconnect();
       renderer.dispose();
       draw.current = () => {};
+      canvas.removeEventListener("pointerdown", onDown);
+      canvas.removeEventListener("pointermove", onMove);
+      canvas.removeEventListener("pointerup", onUp);
+      canvas.removeEventListener("pointercancel", onUp);
+      canvas.removeEventListener("click", onClick);
+      labelTex.dispose();
       scene.traverse((o) => {
         const m = o as THREE.Mesh;
         if (m.geometry) m.geometry.dispose();
