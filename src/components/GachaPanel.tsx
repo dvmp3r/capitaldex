@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { FREE_PULLS, GACHA_ODDS, PITY_EPIC, PITY_LEGENDARY } from "../game/balance";
-import { fmtCapital, fmtPct } from "../game/format";
+import { fmtCapital, fmtDuration, fmtPct } from "../game/format";
 import { pullCost } from "../game/gacha";
 import { RARITY_LABEL } from "../game/rarity";
-import { RARITIES } from "../game/types";
+import { RARITIES, type Rarity } from "../game/types";
 import { useGame } from "../store/gameStore";
 import { CompanyCard, RARITY_INK } from "./CompanyCard";
 
@@ -17,6 +17,7 @@ export function GachaPanel() {
   const cost = pullCost(gacha.pulls);
   const freeLeft = Math.max(0, FREE_PULLS - gacha.pulls);
   const canAfford = capital >= cost;
+  const legendary = lastPull?.rarity === "legendaria";
 
   const onOpen = () => {
     if (openPack()) setRevealKey((k) => k + 1);
@@ -30,9 +31,9 @@ export function GachaPanel() {
       </div>
 
       {/* La carta: dorso antes de abrir, volteo al abrir. */}
-      <div className="flip-scene mx-auto mt-3 w-full max-w-[280px]">
+      <div className="flip-scene relative mx-auto mt-3 w-full max-w-[280px]" data-legendary={legendary ? "true" : undefined}>
         {lastPull ? (
-          <div key={revealKey} className="flip-inner">
+          <div key={revealKey} className={`flip-inner ${legendary ? "is-legendary" : ""}`}>
             <div className="flip-face">
               <CompanyCard company={lastPull.company} shares={lastPull.shares} size="lg" />
             </div>
@@ -49,11 +50,14 @@ export function GachaPanel() {
 
       {lastPull && (
         <p key={`msg-${revealKey}`} className="rise mt-3 text-center text-sm">
-          {lastPull.isNew ? (
+          {legendary ? (
+            <span className="font-bold text-legendaria-ink">¡Legendaria!</span>
+          ) : lastPull.isNew ? (
             <span className="font-bold text-brand">Nueva empresa</span>
           ) : (
             <span className="font-semibold">+1 acción <span className="num text-muted">({lastPull.shares} en total)</span></span>
           )}
+          {legendary && lastPull.isNew && <span className="ml-2 text-muted">nueva en tu colección</span>}
           {lastPull.pity && <span className="ml-2 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted">garantizada</span>}
         </p>
       )}
@@ -64,6 +68,8 @@ export function GachaPanel() {
           {freeLeft > 0 ? `gratis · ${freeLeft}` : canAfford ? fmtCapital(cost) : `faltan ${fmtCapital(cost - capital)}`}
         </span>
       </button>
+
+      <Hint pulls={gacha.pulls} canAfford={canAfford} lastRarity={lastPull?.rarity} />
 
       <div className="mt-4 space-y-2.5">
         <Pity label="Épica garantizada" left={PITY_EPIC - gacha.sinceEpic} total={PITY_EPIC} color="var(--color-epica)" />
@@ -84,7 +90,58 @@ export function GachaPanel() {
           Misma probabilidad para todas las empresas de una rareza. Las carteras solo se abren con capital del juego.
         </p>
       </details>
+
+      <StatsPanel />
     </section>
+  );
+}
+
+/** Pistas de las primeras tiradas. Desaparecen solas cuando ya no hacen falta. */
+function Hint({ pulls, canAfford, lastRarity }: { pulls: number; canAfford: boolean; lastRarity?: Rarity }) {
+  let text: string | null = null;
+  if (pulls === 0) text = "Toca la carta para abrir tu primera cartera. Las tres primeras son gratis.";
+  else if (pulls === 1) text = "Cada empresa genera capital por segundo. Las grandes producen más.";
+  else if (pulls === 2) text = "Si te sale una empresa repetida ganas una acción más: sus ingresos se multiplican.";
+  else if (pulls === FREE_PULLS) text = "A partir de ahora cada cartera cuesta capital. Operar te da cinco segundos de ingresos al instante.";
+  else if (pulls < 8 && !canAfford) text = "Mientras ahorras, mira en la colección qué índices te faltan: completarlos multiplica tus ingresos.";
+  else if (lastRarity === "epica" && pulls < 30) text = "Una épica. Las de más de 350 000 M $ son las que más producen después de las legendarias.";
+  if (!text) return null;
+  return <p className="rise mt-3 text-center text-[13px] leading-snug text-muted [text-wrap:pretty]">{text}</p>;
+}
+
+function StatsPanel() {
+  const stats = useGame((s) => s.stats);
+  const gacha = useGame((s) => s.gacha);
+  const holdings = useGame((s) => s.holdings);
+  const totalEarned = useGame((s) => s.totalEarned);
+  const companies = Object.keys(holdings).length;
+  const shares = Object.values(holdings).reduce((n, h) => n + h.shares, 0);
+  const best = stats.bestRarityRank >= 0 ? RARITY_LABEL[RARITIES[stats.bestRarityRank]] : "–";
+  const since = new Date(stats.startedAt).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
+
+  const rows: [string, string][] = [
+    ["Carteras abiertas", String(gacha.pulls)],
+    ["Empresas distintas", String(companies)],
+    ["Acciones en total", String(shares)],
+    ["Capital generado", fmtCapital(totalEarned)],
+    ["Veces que has operado", String(stats.clicks)],
+    ["Tiempo jugado", fmtDuration(stats.playSeconds)],
+    ["Mejor rareza", best],
+    ["Jugando desde", since],
+  ];
+
+  return (
+    <details className="mt-2 text-xs text-muted">
+      <summary className="cursor-pointer select-none font-medium hover:text-ink">Estadísticas</summary>
+      <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+        {rows.map(([k, v]) => (
+          <div key={k} className="contents">
+            <dt>{k}</dt>
+            <dd className="num text-right font-medium text-ink">{v}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
   );
 }
 

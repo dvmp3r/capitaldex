@@ -24,9 +24,9 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [x] Botón Operar y progreso offline (15-oct-2026)
 - [x] Guardado local versionado, exportar e importar partida (15-oct-2026)
 - [ ] Ajustes: sonido, animaciones reducidas, idioma preparado
-- [ ] Animación de apertura con variante legendaria
-- [ ] Tutorial de 3 tiradas gratis
-- [ ] Pantalla de estadísticas (tiradas, tiempo jugado, mejor tirada)
+- [x] Animación de apertura con variante legendaria (15-oct-2026)
+- [x] Tutorial de 3 tiradas gratis: pistas contextuales en las primeras carteras (15-oct-2026)
+- [x] Pantalla de estadísticas (tiradas, tiempo jugado, mejor tirada) (15-oct-2026)
 - [ ] Despliegue en Cloudflare Pages con dominio provisional
 - [ ] Pruebas con 20 personas durante 2 semanas; encuesta corta
 
