@@ -1,8 +1,8 @@
-# Despliegue automático a GitHub Pages en cada push a master.
+# Despliegue automático a GitHub Pages en cada push a main.
 name: deploy
 on:
   push:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read

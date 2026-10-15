@@ -27,7 +27,7 @@ npm run data       # regenerar datos desde el Excel
 - Cada cambio de reglas de juego lleva prueba en `src/game/*.test.ts`.
 - Antes de dar algo por terminado: `npm test` y `npm run build` en verde, y comprobar la pantalla afectada en el navegador.
 - Interfaz: tema oscuro (negro neutro), blanco como marca, dorado solo en el logo; cartas verticales con arte generado por ticker. Sin emojis como iconos (Windows no los dibuja igual), sin logos, sin banderas emoji.
-- Commits pequeños con mensaje en español que empiece por la fase (`f1: progreso offline configurable`).
+- Commits pequeños con mensaje en español que empiece por la fase (`f1: progreso offline configurable`). La rama principal es `main`.
 
 ## Protocolo de iteración autónoma
 
