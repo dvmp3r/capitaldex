@@ -21,6 +21,10 @@ const HAS_WEBGL = (() => {
 
 export type StagePhase = "idle" | "turning" | "dropping" | "opening" | "revealed";
 
+/** Cuánto se queda la carta a la vista antes de guardarse sola (ms). Más cuanto más rara. */
+const DWELL_MS: Record<Rarity, number> = { comun: 2600, poco_comun: 3000, rara: 3600, epica: 4600, legendaria: 6500 };
+const LEAVE_MS = 460;
+
 interface Props {
   /** Último resultado; cambia de identidad con cada tirada. */
   result: PullResult | null;
@@ -40,8 +44,24 @@ interface Props {
 export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onPhase, className = "" }: Props) {
   const sound = useGame((s) => s.settings.sound);
   const reduced = useGame((s) => s.settings.reducedMotion);
-  const [phase, setPhase] = useState<StagePhase>(result ? "revealed" : "idle");
+  const [phase, setPhase] = useState<StagePhase>("idle");
+  /** La carta se está yendo a la colección (animación de salida). */
+  const [leaving, setLeaving] = useState(false);
   const machine = useRef<MachineHandle>(null);
+  const leaveTimer = useRef<number[]>([]);
+  const clearLeave = () => {
+    leaveTimer.current.forEach((id) => window.clearTimeout(id));
+    leaveTimer.current = [];
+  };
+  /** Guarda la carta: animación de salida y la máquina vuelve a estar lista. */
+  const dismiss = () => {
+    clearLeave();
+    setLeaving(true);
+    leaveTimer.current.push(window.setTimeout(() => {
+      setLeaving(false);
+      setPhase("idle");
+    }, LEAVE_MS));
+  };
   const runId = useRef(0);
   const phaseCb = useRef(onPhase);
   phaseCb.current = onPhase;
@@ -49,6 +69,8 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
   // Nueva tirada: secuencia encadenada por promesas.
   useEffect(() => {
     if (revealKey === 0 || !result) return;
+    clearLeave();
+    setLeaving(false);
     const id = ++runId.current;
     const m = machine.current;
     const alive = () => runId.current === id;
@@ -82,6 +104,17 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealKey]);
 
+  // La carta se guarda sola pasado un rato (según rareza).
+  useEffect(() => {
+    if (phase !== "revealed" || !result) return;
+    clearLeave();
+    const id = window.setTimeout(dismiss, DWELL_MS[result.rarity]);
+    leaveTimer.current.push(id);
+    return clearLeave;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, revealKey]);
+  useEffect(() => clearLeave, []);
+
   // Sonido y aviso de fase.
   useEffect(() => {
     phaseCb.current?.(phase);
@@ -107,38 +140,42 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
       runId.current++;
       machine.current?.skip(result.rarity);
       setPhase("revealed");
+    } else if (phase === "revealed") {
+      if (!leaving) dismiss();
     } else if (phase === "idle" && pullEnabled) {
       onPull?.();
     }
   };
+  const showingCard = phase === "revealed" && !!result;
 
   return (
     <div
-      className={`stage relative aspect-[5/7] w-full select-none ${clickable ? "cursor-pointer" : ""} ${className}`}
+      className={`stage relative aspect-[5/7] w-full select-none ${clickable || showingCard ? "cursor-pointer" : ""} ${className}`}
       onClick={onStageClick}
       role={phase === "idle" && pullEnabled ? "button" : undefined}
       aria-label={phase === "idle" && pullEnabled ? t("gacha.open") : undefined}
-      data-reveal={phase === "revealed" && result ? result.rarity : undefined}
+      data-reveal={showingCard && !leaving ? result.rarity : undefined}
     >
       <div className="stage-light" />
-      {phase === "revealed" && result && (result.rarity === "epica" || result.rarity === "legendaria") && <div className="stage-rays" />}
+      {showingCard && !leaving && (result.rarity === "epica" || result.rarity === "legendaria") && <div className="stage-rays" />}
       {HAS_WEBGL ? (
         <Suspense fallback={<div className="h-full w-full" />}>
-          <Machine3D ref={machine} dimmed={phase === "revealed"} className="h-full w-full" />
+          <Machine3D ref={machine} dimmed={showingCard && !leaving} className="h-full w-full" />
         </Suspense>
       ) : (
-        <Machine2D ref={machine} dimmed={phase === "revealed"} idle={phase === "idle" || phase === "revealed"} className="h-full w-full" />
+        <Machine2D ref={machine} dimmed={showingCard && !leaving} idle={phase === "idle" || phase === "revealed"} className="h-full w-full" />
       )}
       {phase === "revealed" && result && (
-        <div key={revealKey} className={`card-rise card-rise-${result.rarity} absolute inset-[4%]`}>
+        <div key={revealKey} className={`${leaving ? "card-leave" : `card-rise card-rise-${result.rarity}`} absolute inset-[4%]`}>
           <CompanyCard company={result.company} shares={result.shares} size="lg" className="h-full w-full shadow-[0_30px_60px_-20px_oklch(0_0_0/0.9)]" />
           {revealKey > 0 && SPARKS[result.rarity] > 0 && <div className="card-sheen" />}
         </div>
       )}
-      {phase === "revealed" && result && revealKey > 0 && SPARKS[result.rarity] > 0 && (
+      {showingCard && !leaving && revealKey > 0 && SPARKS[result.rarity] > 0 && (
         <Confetti key={`c-${revealKey}`} count={SPARKS[result.rarity]} hue={SPARK_HUE[result.rarity]} />
       )}
       {animating && <span className="absolute bottom-1 left-0 right-0 text-center text-[11px] text-muted">{t("gacha.skipHint")}</span>}
+      {showingCard && !leaving && <span className="absolute -bottom-4 left-0 right-0 text-center text-[11px] text-muted">{t("gacha.saveHint")}</span>}
     </div>
   );
 }

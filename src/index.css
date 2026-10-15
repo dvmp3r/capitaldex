@@ -168,6 +168,12 @@ h1, h2, h3 { text-wrap: balance; }
   80%  { transform: translate(0, -1.5%) scale(1.02); }
   100% { opacity: 1; transform: none; filter: none; }
 }
+/* La carta se va a la colección (arriba a la derecha) */
+.card-leave { animation: card-leave 460ms cubic-bezier(0.4, 0, 1, 1) both; transform-origin: 50% 50%; pointer-events: none; }
+@keyframes card-leave {
+  0%   { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translate(70%, -70%) scale(0.25); filter: blur(2px); }
+}
 .card-rise-comun { animation: card-rise-plain 460ms var(--ease-out-quint) both; }
 @keyframes card-rise-plain {
   0%   { opacity: 0; transform: translate(10%, 28%) scale(0.4); }
@@ -310,6 +316,7 @@ h1, h2, h3 { text-wrap: balance; }
   .stage[data-reveal]::before { animation: burst-fade 600ms ease-out both; }
   .stage-rays { display: none; }
   .rise, .card-rise, .card-rise-comun, .card-rise-epica, .card-rise-legendaria, .intro-in, .intro-in-2, .intro-in-3 { animation: rise-fade 200ms ease-out both; }
+  .card-leave { animation: rise-fade 200ms ease-out reverse both; }
   .card-sheen::after, .machine-caps-idle .machine-cap { animation: none; }
   .card-interactive:hover { transform: none; }
 }
@@ -317,6 +324,7 @@ html[data-motion="reduced"] .card[data-rarity="legendaria"]::after { animation: 
 html[data-motion="reduced"] .stage[data-reveal]::before { animation: burst-fade 600ms ease-out both; }
 html[data-motion="reduced"] .stage-rays { display: none; }
 html[data-motion="reduced"] :is(.rise, .card-rise, .card-rise-comun, .card-rise-epica, .card-rise-legendaria, .intro-in, .intro-in-2, .intro-in-3) { animation: rise-fade 200ms ease-out both; }
+html[data-motion="reduced"] .card-leave { animation: rise-fade 200ms ease-out reverse both; }
 html[data-motion="reduced"] .card-sheen::after, html[data-motion="reduced"] .machine-caps-idle .machine-cap { animation: none; }
 html[data-motion="reduced"] .card-interactive:hover { transform: none; }
 

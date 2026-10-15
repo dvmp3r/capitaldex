@@ -76,6 +76,7 @@ export const es = {
     hintSaving: "Mientras ahorras, mira en la colección qué índices te faltan: completarlos multiplica tus ingresos.",
     hintEpic: "Una épica. Las de más de 350 000 M $ son las que más producen después de las legendarias.",
     skipHint: "Toca para saltar",
+    saveHint: "Toca la carta para guardarla",
   },
   intro: {
     title: "Colecciona el mercado.",
