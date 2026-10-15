@@ -6,14 +6,10 @@ import { OFFLINE_MIN_SECONDS, SAVE_VERSION } from "../game/balance";
 import { clickValue, offlineEarnings, totalIncome, type IncomeBreakdown } from "../game/economy";
 import { INITIAL_GACHA, pullCost, rollPull } from "../game/gacha";
 import { RARITY_RANK } from "../game/rarity";
-import type { GachaState, Holdings, PullResult } from "../game/types";
+import { parseSave, serializeSave, type ParseResult } from "../game/save";
+import type { GachaState, Holdings, PullResult, SaveData, Stats } from "../game/types";
 
-export interface Stats {
-  clicks: number;
-  bestRarityRank: number; // -1 = ninguna tirada todavía
-  playSeconds: number;
-  startedAt: number;
-}
+export type { Stats } from "../game/types";
 
 export interface OfflineReport {
   seconds: number;
@@ -37,6 +33,8 @@ export interface GameState {
   dismissOffline: () => void;
   clearLastPull: () => void;
   reset: () => void;
+  exportSave: () => string;
+  importSave: (text: string) => ParseResult;
 }
 
 function initialState(now = Date.now()) {
@@ -124,6 +122,41 @@ export const useGame = create<GameState>()(
       dismissOffline: () => set({ offline: null }),
       clearLastPull: () => set({ lastPull: null }),
       reset: () => set(initialState()),
+
+      exportSave: () => {
+        const s = get();
+        const data: SaveData = {
+          version: SAVE_VERSION,
+          savedAt: Date.now(),
+          capital: s.capital,
+          totalEarned: s.totalEarned,
+          holdings: s.holdings,
+          gacha: s.gacha,
+          lastTick: s.lastTick,
+          stats: s.stats,
+        };
+        return serializeSave(data);
+      },
+
+      importSave: (text) => {
+        const r = parseSave(text);
+        if (!r.ok) return r;
+        // Empresas que ya no existen en el universo se descartan sin romper la partida.
+        const holdings: Holdings = {};
+        for (const [id, h] of Object.entries(r.data.holdings)) if (BY_ID.has(id)) holdings[id] = h;
+        set({
+          capital: r.data.capital,
+          totalEarned: r.data.totalEarned,
+          holdings,
+          gacha: r.data.gacha,
+          lastTick: r.data.lastTick,
+          stats: r.data.stats,
+          lastPull: null,
+          offline: null,
+        });
+        get().tick(Date.now()); // abona el tiempo transcurrido desde que se exportó
+        return r;
+      },
     }),
     {
       name: "capitaldex-save",
@@ -137,6 +170,11 @@ export const useGame = create<GameState>()(
         lastTick: s.lastTick,
         stats: s.stats,
       }),
+      migrate: (persisted, version) => {
+        // Punto único para migrar guardados antiguos cuando cambie SAVE_VERSION.
+        if (version < 1) return { ...initialState(), ...(persisted as object) };
+        return persisted as GameState;
+      },
       onRehydrateStorage: () => (state) => {
         // Al cargar una partida guardada, abonar el tiempo ausente.
         state?.tick(Date.now());

@@ -42,6 +42,25 @@ export interface PullResult {
   pity: boolean;
 }
 
+export interface Stats {
+  clicks: number;
+  bestRarityRank: number; // -1 = ninguna tirada todavía
+  playSeconds: number;
+  startedAt: number;
+}
+
+/** Forma de la partida guardada (localStorage y archivos exportados). */
+export interface SaveData {
+  version: number;
+  savedAt: number;
+  capital: number;
+  totalEarned: number;
+  holdings: Holdings;
+  gacha: GachaState;
+  lastTick: number;
+  stats: Stats;
+}
+
 export interface SetProgress {
   id: string;
   name: string;

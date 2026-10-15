@@ -22,7 +22,7 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [x] Duplicados como acciones con hitos (15-oct-2026)
 - [x] Sets por índice con bonus (15-oct-2026)
 - [x] Botón Operar y progreso offline (15-oct-2026)
-- [ ] Guardado local versionado, exportar e importar partida
+- [x] Guardado local versionado, exportar e importar partida (15-oct-2026)
 - [ ] Ajustes: sonido, animaciones reducidas, idioma preparado
 - [ ] Animación de apertura con variante legendaria
 - [ ] Tutorial de 3 tiradas gratis

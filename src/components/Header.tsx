@@ -1,16 +1,12 @@
 import { clickValue } from "../game/economy";
 import { fmt, fmtCapital, fmtMult } from "../game/format";
 import { useGame, useIncome } from "../store/gameStore";
+import { SaveMenu } from "./SaveMenu";
 
 export function Header() {
   const capital = useGame((s) => s.capital);
   const work = useGame((s) => s.work);
-  const reset = useGame((s) => s.reset);
   const income = useIncome();
-
-  const onReset = () => {
-    if (window.confirm("¿Borrar la partida? No se puede deshacer.")) reset();
-  };
 
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-bg/95 backdrop-blur-sm">
@@ -33,12 +29,12 @@ export function Header() {
           </div>
         </div>
 
-        <button onClick={work} className="btn-primary order-2 h-9 shrink-0 whitespace-nowrap px-3 text-sm sm:order-3 sm:h-10 sm:px-4" title="Equivale a 5 segundos de ingresos">
-          Operar <span className="num font-semibold opacity-90">+{fmt(clickValue(income.total))}</span>
-        </button>
-        <button onClick={onReset} className="order-4 hidden text-xs text-muted hover:text-ink sm:block" title="Borrar partida">
-          Reiniciar
-        </button>
+        <div className="order-2 flex items-center gap-2 sm:order-3">
+          <button onClick={work} className="btn-primary h-9 shrink-0 whitespace-nowrap px-3 text-sm sm:h-10 sm:px-4" title="Equivale a 5 segundos de ingresos">
+            Operar <span className="num font-semibold opacity-90">+{fmt(clickValue(income.total))}</span>
+          </button>
+          <SaveMenu />
+        </div>
       </div>
     </header>
   );

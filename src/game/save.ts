@@ -1,0 +1,63 @@
+import { SAVE_VERSION } from "./balance";
+import { hashString } from "./hash";
+import type { SaveData } from "./types";
+
+/** Serializa la partida a texto JSON con una suma de control para detectar archivos corruptos o editados. */
+export function serializeSave(data: SaveData): string {
+  const payload = JSON.stringify(data);
+  return JSON.stringify({ app: "capitaldex", checksum: hashString(payload), data });
+}
+
+export type ParseResult = { ok: true; data: SaveData } | { ok: false; error: string };
+
+/** Lee y valida una partida exportada. Nunca lanza: devuelve el error en texto. */
+export function parseSave(text: string): ParseResult {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return { ok: false, error: "El archivo no es un JSON válido." };
+  }
+  if (!isRecord(raw) || raw.app !== "capitaldex" || !isRecord(raw.data)) {
+    return { ok: false, error: "El archivo no es una partida de CapitalDex." };
+  }
+  if (raw.checksum !== hashString(JSON.stringify(raw.data))) {
+    return { ok: false, error: "La partida está dañada o ha sido modificada." };
+  }
+  const d = raw.data;
+  if (typeof d.version !== "number" || d.version > SAVE_VERSION) {
+    return { ok: false, error: "La partida es de una versión más nueva del juego." };
+  }
+  const nums: (keyof SaveData)[] = ["savedAt", "capital", "totalEarned", "lastTick"];
+  for (const k of nums) {
+    if (!isFiniteNumber(d[k]) || (d[k] as number) < 0) return { ok: false, error: `Campo inválido: ${k}.` };
+  }
+  if (!isRecord(d.gacha) || !isInt(d.gacha.pulls) || !isInt(d.gacha.sinceEpic) || !isInt(d.gacha.sinceLegendary)) {
+    return { ok: false, error: "Campo inválido: gacha." };
+  }
+  if (!isRecord(d.stats) || !isInt(d.stats.clicks) || !isFiniteNumber(d.stats.playSeconds) || !isFiniteNumber(d.stats.startedAt) || !isInt(d.stats.bestRarityRank)) {
+    return { ok: false, error: "Campo inválido: stats." };
+  }
+  if (!isRecord(d.holdings)) return { ok: false, error: "Campo inválido: holdings." };
+  for (const [id, h] of Object.entries(d.holdings)) {
+    if (!isRecord(h) || !isInt(h.shares) || h.shares < 1 || !isFiniteNumber(h.firstAt)) {
+      return { ok: false, error: `Empresa inválida en la partida: ${id}.` };
+    }
+  }
+  return { ok: true, data: d as unknown as SaveData };
+}
+
+export function saveFilename(date = new Date()): string {
+  const iso = date.toISOString().slice(0, 10);
+  return `capitaldex-partida-${iso}.json`;
+}
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+function isFiniteNumber(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v);
+}
+function isInt(v: unknown): v is number {
+  return isFiniteNumber(v) && Number.isInteger(v) && v >= 0;
+}
