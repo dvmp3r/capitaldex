@@ -38,6 +38,8 @@ export const es = {
     imported: "Partida importada.",
     resetDone: "Partida reiniciada.",
     resetConfirm: "¿Borrar la partida? No se puede deshacer. Exporta antes si quieres conservarla.",
+    resetYes: "Sí, borrar",
+    resetNo: "Cancelar",
   },
   save: {
     notJson: "El archivo no es un JSON válido.",

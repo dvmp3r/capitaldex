@@ -11,6 +11,7 @@ export function SaveMenu() {
   const settings = useGame((s) => s.settings);
   const setSetting = useGame((s) => s.setSetting);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
   const details = useRef<HTMLDetailsElement>(null);
   const file = useRef<HTMLInputElement>(null);
 
@@ -22,7 +23,10 @@ export function SaveMenu() {
   }, [msg]);
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
-      if (details.current?.open && !details.current.contains(e.target as Node)) details.current.open = false;
+      if (details.current?.open && !details.current.contains(e.target as Node)) {
+        details.current.open = false;
+        setConfirmReset(false);
+      }
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
@@ -52,12 +56,16 @@ export function SaveMenu() {
     close();
   };
 
+  // Sin window.confirm: el visor de artefactos lo bloquea. Confirmación en dos pasos dentro del menú.
   const onReset = () => {
-    close();
-    if (window.confirm(t("menu.resetConfirm"))) {
-      reset();
-      setMsg({ text: t("menu.resetDone"), ok: true });
+    if (!confirmReset) {
+      setConfirmReset(true);
+      return;
     }
+    setConfirmReset(false);
+    close();
+    reset();
+    setMsg({ text: t("menu.resetDone"), ok: true });
   };
 
   const item = "block w-full px-3 py-2 text-left text-sm hover:bg-surface";
@@ -82,7 +90,17 @@ export function SaveMenu() {
           <button className={item} onClick={onExport}>{t("menu.export")}</button>
           <button className={item} onClick={() => file.current?.click()}>{t("menu.import")}</button>
           <div className="my-1 border-t border-line" />
-          <button className={`${item} text-[oklch(0.75_0.17_25)]`} onClick={onReset}>{t("menu.reset")}</button>
+          {confirmReset ? (
+            <div className="px-3 py-2 text-sm">
+              <div className="text-muted">{t("menu.resetConfirm")}</div>
+              <div className="mt-2 flex gap-2">
+                <button className="h-8 flex-1 rounded-lg bg-[oklch(0.62_0.22_25)] text-xs font-bold text-white" onClick={onReset}>{t("menu.resetYes")}</button>
+                <button className="btn-ghost h-8 flex-1 text-xs" onClick={() => setConfirmReset(false)}>{t("menu.resetNo")}</button>
+              </div>
+            </div>
+          ) : (
+            <button className={`${item} text-[oklch(0.75_0.17_25)]`} onClick={onReset}>{t("menu.reset")}</button>
+          )}
         </div>
       </details>
       <input ref={file} type="file" accept="application/json,.json" className="hidden" onChange={(e) => onImportFile(e.target.files?.[0])} />
