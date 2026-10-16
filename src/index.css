@@ -308,11 +308,11 @@ h1, h2, h3 { text-wrap: balance; }
 .chip:hover { color: var(--color-ink); border-color: oklch(0.5 0 0); }
 .chip-on { background: var(--color-ink); color: var(--color-bg); border-color: var(--color-ink); }
 
-/* Tarjetas de series del Mercado */
-.series-card { transition: box-shadow 200ms, opacity 200ms; }
-.series-card[data-state="buy"] { box-shadow: 0 0 0 1px oklch(0.84 0.15 88 / 0.55) inset, 0 0 20px -12px oklch(0.84 0.15 88 / 0.6); }
-.series-card[data-state="locked"] { opacity: 0.62; }
-.series-card[data-state="max"] { opacity: 0.8; }
+/* Filas de series del Mercado (orden fijo; el estado solo cambia el aspecto) */
+.series-row { transition: background-color 200ms, opacity 200ms; }
+.series-row[data-state="buy"] { background: oklch(0.84 0.15 88 / 0.06); box-shadow: inset 3px 0 0 oklch(0.84 0.15 88 / 0.9); }
+.series-row[data-state="locked"] { opacity: 0.55; }
+.series-row[data-state="max"] { opacity: 0.75; }
 
 /* Anillo de progreso con gradiente cónico; --p en porcentaje */
 .ring {

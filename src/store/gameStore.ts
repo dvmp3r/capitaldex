@@ -63,6 +63,8 @@ export interface GameState {
   pullSeq: number;
   /** Momento de la última cartera automática */
   lastAutoPull: number;
+  /** Momento de la última orden automática de Operar */
+  lastAutoWork: number;
   /** Órdenes de Operar disponibles (se recuperan con el tiempo) */
   orders: number;
   /** Objetivos de partida activos (3) y cuántos se han completado */
@@ -96,7 +98,8 @@ export interface GameState {
   openPack: () => PullResult | null;
   /** Gasta una orden; devuelve lo ganado (0 si no quedan). */
   work: () => number;
-  buyUpgrade: (id: string) => boolean;
+  /** Sube `count` niveles de una serie (los que se puedan pagar y estén desbloqueados). */
+  buyUpgrade: (id: string, count?: number) => boolean;
   acceptNews: () => void;
   checkAchievements: () => void;
   /** La máquina se ha agitado con ganas: bono de suerte para la siguiente cartera. */
@@ -131,6 +134,7 @@ function initialState(now = Date.now()) {
     achievements: [] as string[],
     pullSeq: 0,
     lastAutoPull: 0,
+    lastAutoWork: 0,
     orders: ORDERS_MAX,
     missions: [] as Mission[],
     missionsDone: 0,
@@ -304,6 +308,11 @@ export const useGame = create<GameState>()(
         }
         set(patch);
         if (Math.floor(now / 5000) !== Math.floor(s.lastTick / 5000)) get().checkAchievements();
+        // Operador automático: gasta una orden sola cada cierto tiempo.
+        if (mults.autoWorkSeconds > 0 && now - s.lastAutoWork >= mults.autoWorkSeconds * 1000 && get().orders >= 1) {
+          set({ lastAutoWork: now });
+          get().work();
+        }
         // Gestor automático: abre una cartera sola cada cierto tiempo, si hay capital.
         if (mults.autoPullSeconds > 0 && now - s.lastAutoPull >= mults.autoPullSeconds * 1000) {
           set({ lastAutoPull: now });
@@ -354,20 +363,28 @@ export const useGame = create<GameState>()(
         return gain;
       },
 
-      buyUpgrade: (id) => {
+      buyUpgrade: (id, count = 1) => {
         const s = get();
         const series = SERIES_BY_ID.get(id);
         if (!series) return false;
-        const level = (s.upgrades[id] ?? 0) + 1;
-        if (level > series.maxLevel) return false;
-        const cost = seriesCost(series, level);
-        if (s.capital < cost) return false;
-        if (!requirementMet(series.requirement(level), contextOf(s.holdings, s.gacha.pulls))) return false;
+        const ctx = contextOf(s.holdings, s.gacha.pulls);
+        let level = s.upgrades[id] ?? 0;
+        let capital = s.capital;
+        let bought = 0;
+        while (bought < count && level < series.maxLevel) {
+          const next = level + 1;
+          const cost = seriesCost(series, next);
+          if (capital < cost || !requirementMet(series.requirement(next), ctx)) break;
+          capital -= cost;
+          level = next;
+          bought++;
+        }
+        if (bought === 0) return false;
         const [headline] = seriesHeadline(series, level);
         set({
-          capital: s.capital - cost,
+          capital,
           upgrades: { ...s.upgrades, [id]: level },
-          toasts: [...s.toasts.slice(-3), { id: ++toastSeq, text: `${headline} · nivel ${level}`, kind: "gold" }],
+          toasts: [...s.toasts.slice(-3), { id: ++toastSeq, text: bought > 1 ? `${headline} · nivel ${level} (+${bought})` : `${headline} · nivel ${level}`, kind: "gold" }],
         });
         cloudHooks.onChange?.();
         get().checkAchievements();
