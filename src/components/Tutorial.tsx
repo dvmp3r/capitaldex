@@ -53,6 +53,11 @@ export function Tutorial() {
   const active = introSeen && !tutorialSeen && pulls <= 12;
   const step = STEPS[Math.min(i, STEPS.length - 1)];
 
+  // Cada vez que se abre (primera vez o desde el menú) empieza por el primer paso.
+  useEffect(() => {
+    if (active) setI(0);
+  }, [active]);
+
   const finish = useCallback(() => {
     setSetting("tutorialSeen", true);
     setI(0);
