@@ -497,6 +497,18 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
         view.dragged = false;
       }
     };
+    // Tecla A (desde App): sacudida fuerte con bamboleo visible y bono de suerte.
+    let shakeSide = 1;
+    const onShakeKey = () => {
+      shakeSide = -shakeSide;
+      sim.shake(6.5 * shakeSide, 1.2, 0);
+      view.yawT = 0.32 * shakeSide;
+      view.pitchT = 0.06;
+      window.setTimeout(() => { if (!view.dragging) { view.yawT = 0; view.pitchT = 0; } }, 140);
+      useGame.getState().noteShake();
+      dirty.current = true;
+    };
+    window.addEventListener("capitaldex:shake", onShakeKey);
     canvas.addEventListener("pointerdown", onDown);
     canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerup", onUp);
@@ -613,6 +625,7 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       ro.disconnect();
       renderer.dispose();
       draw.current = () => {};
+      window.removeEventListener("capitaldex:shake", onShakeKey);
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerup", onUp);

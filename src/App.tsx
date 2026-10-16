@@ -60,16 +60,18 @@ export default function App() {
     };
   }, []);
 
-  // Barra espaciadora: abrir cartera (si no se está escribiendo en un campo).
+  // Teclas: espacio abre cartera, A agita la máquina (si no se está escribiendo en un campo).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code !== "Space" || e.repeat) return;
+      if ((e.code !== "Space" && e.code !== "KeyA") || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
       const el = e.target as HTMLElement | null;
-      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.tagName === "BUTTON" || el.isContentEditable)) return;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
+      if (e.code === "Space" && el && el.tagName === "BUTTON") return;
       const s = useGame.getState();
       if (!s.settings.introSeen) return;
       e.preventDefault();
-      s.openPack();
+      if (e.code === "KeyA") window.dispatchEvent(new CustomEvent("capitaldex:shake"));
+      else s.openPack();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
