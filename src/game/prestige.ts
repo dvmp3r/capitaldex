@@ -15,8 +15,8 @@ export function earnedForInfluence(influence: number): number {
   return Math.pow(influence, 1 / INFLUENCE_EXP) * INFLUENCE_UNIT;
 }
 
-/** 100 k generados → 1 de influencia; 10 M → 6; 1 000 M → 40; 10 000 M → 100. El primer holding llega en 15-25 min. */
-export const INFLUENCE_UNIT = 1e5;
+/** 300 k generados → 1 de influencia; 10 M → 4; 1 000 M → 25; 10 000 M → 64; 1 B → 405. (16-oct-2026: Jorge veía el primer holding demasiado pronto con 100 k.) */
+export const INFLUENCE_UNIT = 3e5;
 export const INFLUENCE_EXP = 0.4;
 /** Ingresos permanentes por punto de influencia (+2 % cada uno, compuesto suave). */
 export const INFLUENCE_INCOME = 0.02;

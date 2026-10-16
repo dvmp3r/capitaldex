@@ -57,7 +57,8 @@ export function Collection() {
     <section aria-labelledby="coleccion-h" className="min-w-0">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 id="coleccion-h" className="text-lg font-bold">{t("collection.title")}</h2>
-        <span className="num text-sm text-muted">{t("collection.discovered", { owned: Object.keys(discovered).length - (pending?.isNew ? 1 : 0), total: COMPANIES.length })}</span>
+        <span className="num text-sm text-muted" title={t("collection.discoveredTitle")}>{t("collection.discovered", { owned: Object.keys(discovered).length - (pending?.isNew ? 1 : 0), total: COMPANIES.length })}</span>
+        <span className="num rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-semibold text-ink/80" title={t("collection.inRunTitle")}>{t("collection.inRun", { n: Object.keys(holdings).length - (pending?.isNew ? 1 : 0) })}</span>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">

@@ -25,7 +25,8 @@ export function Header() {
   const influence = useGame((s) => s.influence);
   const holdingsFounded = useGame((s) => s.holdingsFounded);
   const openHolding = useGame((s) => s.openHolding);
-  const showHolding = influenceGain >= 1 || influence > 0 || holdingsFounded > 0;
+  // El botón aparece cuando merece la pena (al menos +2) o cuando ya se ha fundado alguno.
+  const showHolding = influenceGain >= 2 || influence > 0 || holdingsFounded > 0;
   const boosts = useGame((s) => s.boosts);
   const freePulls = useGame((s) => s.freePulls);
   const sound = useGame((s) => s.settings.sound);

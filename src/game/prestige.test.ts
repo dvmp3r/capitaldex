@@ -4,9 +4,9 @@ import { earnedForInfluence, HOLDING_UPGRADES, influenceFor, prestigeEffects } f
 describe("prestigio", () => {
   it("la influencia crece con raíz del capital generado", () => {
     expect(influenceFor(0)).toBe(0);
-    expect(influenceFor(1e5)).toBe(1);
-    expect(influenceFor(1e7)).toBe(6);
-    expect(influenceFor(1e10)).toBe(100);
+    expect(influenceFor(3e5)).toBe(1);
+    expect(influenceFor(1e7)).toBe(4);
+    expect(influenceFor(1e10)).toBe(64);
     expect(influenceFor(earnedForInfluence(10))).toBeGreaterThanOrEqual(10);
   });
 
