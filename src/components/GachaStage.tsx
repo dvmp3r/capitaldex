@@ -119,6 +119,8 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
   // Sonido y aviso de fase.
   useEffect(() => {
     phaseCb.current?.(phase);
+    // Hasta aquí la colección no enseña la carta nueva (evita el "spoiler" durante la animación).
+    if (phase === "revealed" && revealKey > 0) useGame.getState().markRevealed();
     if (!sound) return;
     if (phase === "turning") {
       playKnob();

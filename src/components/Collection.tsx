@@ -14,6 +14,9 @@ const PAGE = 60;
 export function Collection() {
   const holdings = useGame((s) => s.holdings);
   const discovered = useGame((s) => s.discovered);
+  // Carta que aún se está revelando en la máquina: la colección la enseña como estaba antes de la tirada.
+  const pending = useGame((s) => (s.revealPending ? s.lastPull : null));
+  const isPending = (id: string) => pending?.company.id === id;
   const [rarity, setRarity] = useState<Rarity | "">("");
   const [index, setIndex] = useState("");
   const [sector, setSector] = useState("");
@@ -31,7 +34,7 @@ export function Collection() {
       if (index && !c.indices.includes(index)) return false;
       if (sector && c.sector !== sector) return false;
       if (country && c.countryCode !== country) return false;
-      if (onlyOwned && !holdings[c.id]) return false;
+      if (onlyOwned && (!holdings[c.id] || (isPending(c.id) && pending?.isNew))) return false;
       if (q && !(c.id.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))) return false;
       return true;
     });
@@ -45,7 +48,7 @@ export function Collection() {
     return [...filtered].sort(sorters[sort]);
   }, [holdings, rarity, index, sector, country, query, onlyOwned, sort]);
 
-  const ownedInList = list.filter((c) => holdings[c.id]).length;
+  const ownedInList = list.filter((c) => holdings[c.id] && !(isPending(c.id) && pending?.isNew)).length;
   const sets = useMemo(() => setProgress(holdings, INDEX_MEMBERS), [holdings]);
   const activeSet = index ? sets.find((s) => s.id === index) : undefined;
   const shown = list.slice(0, limit);
@@ -54,7 +57,7 @@ export function Collection() {
     <section aria-labelledby="coleccion-h" className="min-w-0">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 id="coleccion-h" className="text-lg font-bold">{t("collection.title")}</h2>
-        <span className="num text-sm text-muted">{t("collection.discovered", { owned: Object.keys(discovered).length, total: COMPANIES.length })}</span>
+        <span className="num text-sm text-muted">{t("collection.discovered", { owned: Object.keys(discovered).length - (pending?.isNew ? 1 : 0), total: COMPANIES.length })}</span>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -103,8 +106,10 @@ export function Collection() {
             {shown.map((c) => {
               const h = holdings[c.id];
               const shares = h?.shares ?? 0;
-              const seen = !!discovered[c.id];
-              return <CompanyCard key={c.id} company={c} shares={shares} hidden={shares === 0 && !seen} ghost={shares === 0 && seen} interactive={shares > 0} isNew={!!h && Date.now() - h.firstAt < 15_000} size="sm" />;
+              const hold = isPending(c.id);
+              const shownShares = hold ? shares - 1 : shares;
+              const seen = !!discovered[c.id] && !(hold && pending?.isNew);
+              return <CompanyCard key={c.id} company={c} shares={shownShares} hidden={shownShares === 0 && !seen} ghost={shownShares === 0 && seen} interactive={shownShares > 0} isNew={!hold && !!h && Date.now() - h.firstAt < 15_000} size="sm" />;
             })}
           </div>
           {list.length > limit && (

@@ -89,6 +89,10 @@ export interface GameState {
   news: { offer: NewsOffer | null; nextAt: number };
   /** Transitorio (no se guarda) */
   lastPull: PullResult | null;
+  /** La última cartera aún no se ha mostrado (animación en curso): la colección no la enseña todavía. */
+  revealPending: boolean;
+  /** Aviso (hito de acciones) que se enseña cuando la carta se revela, no antes. */
+  pendingToast: Toast | null;
   offline: OfflineReport | null;
   toasts: Toast[];
   pushToast: (text: string, kind?: Toast["kind"]) => void;
@@ -111,6 +115,8 @@ export interface GameState {
   dismissNews: () => void;
   dismissOffline: () => void;
   clearLastPull: () => void;
+  /** La carta ya está a la vista: se enseña en la colección, se avisa del hito y se comprueban logros. */
+  markRevealed: () => void;
   reset: () => void;
   exportSave: () => string;
   /** `trusted`: partida de la nube del propio usuario (sin suma de control). */
@@ -149,6 +155,8 @@ function initialState(now = Date.now()) {
     holdingOpen: false,
     news: { offer: null as NewsOffer | null, nextAt: 0 },
     lastPull: null,
+    revealPending: false,
+    pendingToast: null,
     offline: null,
     toasts: [] as Toast[],
   };
@@ -333,9 +341,11 @@ export const useGame = create<GameState>()(
         const prev = s.holdings[roll.company.id];
         const shares = (prev?.shares ?? 0) + 1;
         const result: PullResult = { company: roll.company, rarity: roll.rarity, isNew: !prev, shares, pity: roll.pity };
+        // Si la cartera anterior no llegó a revelarse (otra encima), se da por vista antes de seguir.
+        if (s.revealPending) get().markRevealed();
         const milestone = SHARE_MILESTONES.find((m) => m.shares === shares);
-        const toasts = [...s.toasts.slice(-3)];
-        if (milestone) toasts.push({ id: ++toastSeq, text: `Hito: ${shares} acciones de ${roll.company.id.replace(/\.[A-Z]+$/, "")} → ×${milestone.mult}`, kind: "gold" });
+        const toasts = [...get().toasts.slice(-3)];
+        const pendingToast: Toast | null = milestone ? { id: ++toastSeq, text: `Hito: ${shares} acciones de ${roll.company.id.replace(/\.[A-Z]+$/, "")} → ×${milestone.mult}`, kind: "gold" } : null;
         set({
           toasts,
           capital: s.capital - cost,
@@ -345,12 +355,20 @@ export const useGame = create<GameState>()(
           shakenAt: 0,
           freePulls: free ? s.freePulls - 1 : s.freePulls,
           lastPull: result,
+          revealPending: true,
+          pendingToast,
           pullSeq: s.pullSeq + 1,
           stats: { ...s.stats, bestRarityRank: Math.max(s.stats.bestRarityRank, RARITY_RANK[roll.rarity]) },
         });
         cloudHooks.onChange?.();
-        get().checkAchievements();
         return result;
+      },
+
+      markRevealed: () => {
+        const s = get();
+        if (!s.revealPending) return;
+        set({ revealPending: false, pendingToast: null, toasts: s.pendingToast ? [...s.toasts.slice(-3), s.pendingToast] : s.toasts });
+        get().checkAchievements();
       },
 
       work: () => {
@@ -511,7 +529,7 @@ export const useGame = create<GameState>()(
       },
 
       dismissOffline: () => set({ offline: null }),
-      clearLastPull: () => set({ lastPull: null }),
+      clearLastPull: () => set({ lastPull: null, revealPending: false, pendingToast: null }),
       // Los ajustes se conservan, salvo que la introducción vuelve a mostrarse.
       reset: () => set({ ...initialState(), settings: { ...get().settings, introSeen: false } }),
 
