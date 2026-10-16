@@ -32,7 +32,7 @@ async function mergeOnLogin(user: CloudUser) {
     }
   }
   const g = useGame.getState();
-  await pushSave(user.id, g.exportSave(), g.capital, g.lifetimeBase + g.totalEarned, Object.keys(g.discovered).length);
+  await pushSave(user.id, g.exportSave(), g.capital, g.lifetimeBase + g.totalEarned, Object.keys(g.holdings).length);
 }
 
 export const useCloud = create<CloudState>()((set, get) => ({
@@ -89,7 +89,7 @@ export const useCloud = create<CloudState>()((set, get) => ({
     if (!user || get().busy) return;
     try {
       const g = useGame.getState();
-      await pushSave(user.id, g.exportSave(), g.capital, g.lifetimeBase + g.totalEarned, Object.keys(g.discovered).length);
+      await pushSave(user.id, g.exportSave(), g.capital, g.lifetimeBase + g.totalEarned, Object.keys(g.holdings).length);
       set({ lastSyncAt: Date.now(), error: null });
     } catch (e) {
       set({ error: (e as Error).message });

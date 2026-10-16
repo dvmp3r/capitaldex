@@ -20,7 +20,7 @@ export function Header() {
   const work = useGame((s) => s.work);
   const orders = useGame((s) => s.orders);
   const ordersMax = useGame((s) => ordersMaxOf(s.holding));
-  const discoveredCount = useGame((s) => Object.keys(s.discovered).length - (s.revealPending && s.lastPull?.isNew ? 1 : 0));
+  const discoveredCount = useGame((s) => Object.keys(s.holdings).length - (s.revealPending && s.lastPull?.isNew ? 1 : 0));
   const influenceGain = useGame((s) => Math.max(0, influenceFor(s.lifetimeBase + s.totalEarned) - s.influenceEarned));
   const influence = useGame((s) => s.influence);
   const holdingsFounded = useGame((s) => s.holdingsFounded);

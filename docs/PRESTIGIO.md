@@ -91,3 +91,7 @@ Varias tablas en lugar de una: **colección descubierta (%)**, **influencia tota
 3. Objetivos de run (3 rotativos).
 4. Capas por holding y tablas de ranking.
 5. Reajuste de ritmo con datos (tiempo hasta primer prestigio).
+
+## Cambio del 16-oct-2026: la colección es por partida
+
+Tras probar el primer holding, Jorge decidió que la colección **empieza de cero** al fundarlo: el contador y la cuadrícula muestran solo las empresas de la partida actual (no las descubiertas en partidas anteriores). El registro de descubiertas de todas las partidas se sigue guardando (se ve en la pantalla del holding como "Descubiertas en total") por si más adelante se quiere un álbum histórico, pero no cuenta como progreso. El objetivo pasa a ser completar la colección en una partida, apoyándose en las mejoras del holding (ojo clínico, contactos, gestor).

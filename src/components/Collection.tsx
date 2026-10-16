@@ -13,7 +13,6 @@ const PAGE = 60;
 
 export function Collection() {
   const holdings = useGame((s) => s.holdings);
-  const discovered = useGame((s) => s.discovered);
   // Carta que aún se está revelando en la máquina: la colección la enseña como estaba antes de la tirada.
   const pending = useGame((s) => (s.revealPending ? s.lastPull : null));
   const isPending = (id: string) => pending?.company.id === id;
@@ -57,8 +56,7 @@ export function Collection() {
     <section aria-labelledby="coleccion-h" className="min-w-0">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 id="coleccion-h" className="text-lg font-bold">{t("collection.title")}</h2>
-        <span className="num text-sm text-muted" title={t("collection.discoveredTitle")}>{t("collection.discovered", { owned: Object.keys(discovered).length - (pending?.isNew ? 1 : 0), total: COMPANIES.length })}</span>
-        <span className="num rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-semibold text-ink/80" title={t("collection.inRunTitle")}>{t("collection.inRun", { n: Object.keys(holdings).length - (pending?.isNew ? 1 : 0) })}</span>
+        <span className="num text-sm text-muted" title={t("collection.discoveredTitle")}>{t("collection.discovered", { owned: Object.keys(holdings).length - (pending?.isNew ? 1 : 0), total: COMPANIES.length })}</span>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -109,8 +107,7 @@ export function Collection() {
               const shares = h?.shares ?? 0;
               const hold = isPending(c.id);
               const shownShares = hold ? shares - 1 : shares;
-              const seen = !!discovered[c.id] && !(hold && pending?.isNew);
-              return <CompanyCard key={c.id} company={c} shares={shownShares} hidden={shownShares === 0 && !seen} ghost={shownShares === 0 && seen} interactive={shownShares > 0} isNew={!hold && !!h && Date.now() - h.firstAt < 15_000} size="sm" />;
+              return <CompanyCard key={c.id} company={c} shares={shownShares} hidden={shownShares === 0} interactive={shownShares > 0} isNew={!hold && !!h && Date.now() - h.firstAt < 15_000} size="sm" />;
             })}
           </div>
           {list.length > limit && (
