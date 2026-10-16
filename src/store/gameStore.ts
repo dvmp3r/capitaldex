@@ -28,6 +28,8 @@ export interface Settings {
   reducedMotion: boolean;
   /** La introducción a toda pantalla ya se ha visto (o se ha saltado). */
   introSeen: boolean;
+  /** Tutorial guiado de la primera partida ya visto o saltado */
+  tutorialSeen: boolean;
 }
 
 export interface Toast {
@@ -113,7 +115,7 @@ export interface GameState {
   setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 }
 
-const DEFAULT_SETTINGS: Settings = { sound: true, reducedMotion: false, introSeen: false };
+const DEFAULT_SETTINGS: Settings = { sound: true, reducedMotion: false, introSeen: false, tutorialSeen: false };
 
 function initialState(now = Date.now()) {
   return {

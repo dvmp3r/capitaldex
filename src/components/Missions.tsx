@@ -29,7 +29,7 @@ export function Missions() {
   if (!missions.length) return null;
 
   return (
-    <section className="mt-4 rounded-xl border border-line bg-surface px-3 py-3" aria-labelledby="objetivos-h">
+    <section className="mt-4 rounded-xl border border-line bg-surface px-3 py-3" aria-labelledby="objetivos-h" data-tour="missions">
       <div className="flex items-center gap-1.5 text-[12px] font-semibold text-muted">
         <Target size={13} aria-hidden="true" />
         <h3 id="objetivos-h">{t("missions.title")}</h3>

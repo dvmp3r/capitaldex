@@ -153,6 +153,7 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
     <div
       className={`stage relative aspect-[5/7] w-full select-none ${clickable || showingCard ? "cursor-pointer" : ""} ${className}`}
       onClick={onStageClick}
+      data-tour="machine"
       role={phase === "idle" && pullEnabled ? "button" : undefined}
       aria-label={phase === "idle" && pullEnabled ? t("gacha.open") : undefined}
       data-reveal={showingCard && !leaving ? result.rarity : undefined}

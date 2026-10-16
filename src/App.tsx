@@ -11,6 +11,7 @@ import { NewsBanner } from "./components/NewsBanner";
 import { OfflineBanner } from "./components/OfflineBanner";
 import { Ranking } from "./components/Ranking";
 import { Toasts } from "./components/Toasts";
+import { Tutorial } from "./components/Tutorial";
 import { TICK_MS } from "./game/balance";
 import { fmtCapital } from "./game/format";
 import { t } from "./i18n";
@@ -22,6 +23,13 @@ export default function App() {
   const tick = useGame((s) => s.tick);
   const reducedMotion = useGame((s) => s.settings.reducedMotion);
   const [tab, setTab] = useState<Tab>("collection");
+
+  // El tutorial (y cualquier otro componente) puede pedir una pestaña con un evento.
+  useEffect(() => {
+    const onTab = (e: Event) => setTab((e as CustomEvent<Tab>).detail);
+    window.addEventListener("capitaldex:tab", onTab);
+    return () => window.removeEventListener("capitaldex:tab", onTab);
+  }, []);
 
   // El ajuste de animaciones reducidas se aplica como atributo en <html>; el CSS lo trata igual que prefers-reduced-motion.
   useEffect(() => {
@@ -88,7 +96,7 @@ export default function App() {
         <div className="min-w-0">
           <div className="tabbar mb-5" role="tablist">
             {TABS.map((tb) => (
-              <button key={tb.id} role="tab" aria-selected={tab === tb.id} className={`tab ${tab === tb.id ? "tab-on" : ""}`} onClick={() => setTab(tb.id)}>
+              <button key={tb.id} role="tab" data-tour={`tab-${tb.id}`} aria-selected={tab === tb.id} className={`tab ${tab === tb.id ? "tab-on" : ""}`} onClick={() => setTab(tb.id)}>
                 {tb.icon}
                 <span>{tb.label}</span>
               </button>
@@ -103,6 +111,7 @@ export default function App() {
       <NewsBanner />
       <Toasts />
       <Holding />
+      <Tutorial />
       <Intro />
     </div>
   );

@@ -63,7 +63,7 @@ export function Header() {
           <Wordmark size={21} />
         </a>
 
-        <div className="order-3 col-span-2 flex items-baseline gap-4 sm:order-2 sm:col-span-1 sm:ml-auto sm:gap-5">
+        <div className="order-3 col-span-2 flex items-baseline gap-4 sm:order-2 sm:col-span-1 sm:ml-auto sm:gap-5" data-tour="capital">
           <div className="sm:text-right">
             <div key={pop} className={`num whitespace-nowrap text-[20px] font-bold leading-none sm:text-[26px] ${pop ? "pop" : ""}`}>{fmtCapital(shown)}</div>
             <div className="mt-0.5 text-[11px] text-muted">{t("header.capital")}</div>
@@ -81,7 +81,7 @@ export function Header() {
         </div>
 
         <div className="order-2 flex items-center gap-2 sm:order-3">
-          <div className="relative">
+          <div className="relative" data-tour="work">
             <button
               onClick={onWork}
               disabled={orders < 1}
@@ -110,7 +110,7 @@ export function Header() {
       </div>
 
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 pb-2 text-[12px]">
-        <span className="flex items-center gap-2 text-muted" title={t("header.collectionTitle")}>
+        <span className="flex items-center gap-2 text-muted" title={t("header.collectionTitle")} data-tour="collection">
           <span className="num">{t("header.collection", { n: discoveredCount, total: COMPANIES.length })}</span>
           <span className="meter w-24"><i style={{ width: `${(discoveredCount / COMPANIES.length) * 100}%`, background: "var(--color-gold)" }} /></span>
         </span>

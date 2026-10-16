@@ -289,6 +289,11 @@ h1, h2, h3 { text-wrap: balance; }
 .medal-silver { background: linear-gradient(160deg, oklch(0.9 0 0), oklch(0.72 0 0)); }
 .medal-bronze { background: linear-gradient(160deg, oklch(0.78 0.1 60), oklch(0.6 0.1 50)); }
 
+/* Tutorial guiado: foco recortado sobre el elemento y tarjeta */
+.tour-hole { position: fixed; border-radius: 14px; box-shadow: 0 0 0 9999px oklch(0 0 0 / 0.66), 0 0 0 2px oklch(0.84 0.15 88 / 0.9), 0 0 24px 2px oklch(0.84 0.15 88 / 0.35); pointer-events: none; transition: top 250ms var(--ease-out-quint), left 250ms var(--ease-out-quint), width 250ms var(--ease-out-quint), height 250ms var(--ease-out-quint); }
+.tour-dim { position: fixed; inset: 0; background: oklch(0 0 0 / 0.66); }
+.tour-card { position: fixed; border-radius: 16px; border: 1px solid var(--color-line-strong); background: var(--color-bg); padding: 14px 16px; box-shadow: 0 24px 60px -20px oklch(0 0 0 / 0.9); animation: rise 320ms var(--ease-out-quint) both; transition: top 250ms var(--ease-out-quint), left 250ms var(--ease-out-quint); }
+
 .chip {
   height: 30px;
   padding: 0 12px;
