@@ -23,10 +23,12 @@ interface Props {
   interactive?: boolean;
   /** Conseguida hace poco: halo que respira. */
   isNew?: boolean;
+  /** Descubierta en otra partida pero sin acciones en esta: se ve atenuada. */
+  ghost?: boolean;
   className?: string;
 }
 
-export function CompanyCard({ company, shares = 0, hidden = false, size = "lg", interactive = false, isNew = false, className = "" }: Props) {
+export function CompanyCard({ company, shares = 0, hidden = false, size = "lg", interactive = false, isNew = false, ghost = false, className = "" }: Props) {
   const rarity = rarityOf(company);
   const big = size === "lg";
   const ticker = company.id.replace(/\.[A-Z]+$/, "");
@@ -35,7 +37,7 @@ export function CompanyCard({ company, shares = 0, hidden = false, size = "lg", 
   return (
     <article
       data-rarity={rarity}
-      className={`card ${hidden ? "is-hidden" : ""} ${interactive ? "card-interactive" : ""} ${isNew ? "card-new" : ""} ${className}`}
+      className={`card ${hidden ? "is-hidden" : ""} ${ghost ? "card-ghost" : ""} ${interactive ? "card-interactive" : ""} ${isNew ? "card-new" : ""} ${className}`}
       aria-label={hidden ? t("card.undiscoveredAria", { rarity: rarityLabel(rarity), sector: company.sector }) : `${company.name}, ${rarityLabel(rarity)}`}
     >
       {/* Cabecera: ticker + país */}
@@ -77,6 +79,7 @@ export function CompanyCard({ company, shares = 0, hidden = false, size = "lg", 
           </dl>
         )}
 
+        {ghost && shares === 0 && <div className="mt-2 border-t border-line pt-2 text-[11px] text-muted">{t("card.ghost")}</div>}
         {shares > 0 && (
           <div className={`num mt-2 flex flex-wrap items-end justify-between gap-x-2 border-t border-line pt-2 ${big ? "text-sm" : "text-[12px]"}`}>
             <div className="whitespace-nowrap">

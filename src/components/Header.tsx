@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveValue } from "../hooks/useTween";
-import { ORDERS_MAX, ORDERS_REFILL_SECONDS } from "../game/balance";
+import { ORDERS_REFILL_SECONDS } from "../game/balance";
+import { COMPANIES } from "../data/companies";
+import { influenceFor } from "../game/prestige";
+import { Crown } from "lucide-react";
 import { clickValue } from "../game/economy";
 import { fmt, fmtCapital, fmtMult } from "../game/format";
 import { rarityLabel } from "../game/rarity";
 import { playClick } from "../game/sound";
 import { effectLabel } from "../game/upgrades";
 import { t } from "../i18n";
-import { useGame, useIncome, useMults } from "../store/gameStore";
+import { ordersMaxOf, useGame, useIncome, useMults } from "../store/gameStore";
 import { Account } from "./Account";
 import { Wordmark } from "./Logo";
 import { SaveMenu } from "./SaveMenu";
@@ -16,6 +19,13 @@ export function Header() {
   const capital = useGame((s) => s.capital);
   const work = useGame((s) => s.work);
   const orders = useGame((s) => s.orders);
+  const ordersMax = useGame((s) => ordersMaxOf(s.holding));
+  const discoveredCount = useGame((s) => Object.keys(s.discovered).length);
+  const influenceGain = useGame((s) => Math.max(0, influenceFor(s.lifetimeBase + s.totalEarned) - s.influenceEarned));
+  const influence = useGame((s) => s.influence);
+  const holdingsFounded = useGame((s) => s.holdingsFounded);
+  const openHolding = useGame((s) => s.openHolding);
+  const showHolding = influenceGain >= 1 || influence > 0 || holdingsFounded > 0;
   const boosts = useGame((s) => s.boosts);
   const freePulls = useGame((s) => s.freePulls);
   const sound = useGame((s) => s.settings.sound);
@@ -77,27 +87,36 @@ export function Header() {
               disabled={orders < 1}
               className="btn-primary relative h-9 shrink-0 overflow-hidden whitespace-nowrap px-3 text-sm sm:h-10 sm:px-4"
               title={orders < 1 ? t("header.noOrders") : t("header.workTitle", { n: Math.round(mults.clickSeconds), refill: ORDERS_REFILL_SECONDS })}
-              aria-label={`${t("header.work")} +${fmt(clickValue(income.total, mults.clickSeconds))} · ${t("header.orders", { n: Math.floor(orders), max: ORDERS_MAX })}`}
+              aria-label={`${t("header.work")} +${fmt(clickValue(income.total, mults.clickSeconds))} · ${t("header.orders", { n: Math.floor(orders), max: ordersMax })}`}
             >
               {t("header.work")} <span className="num font-semibold opacity-90">+{fmt(clickValue(income.total, mults.clickSeconds))}</span>
-              <span className="num ml-2 rounded-full bg-black/20 px-1.5 text-[11px] font-semibold">{Math.floor(orders)}/{ORDERS_MAX}</span>
-              <i aria-hidden className="absolute bottom-0 left-0 h-[3px] bg-black/35 transition-[width] duration-300" style={{ width: `${(orders / ORDERS_MAX) * 100}%` }} />
+              <span className="num ml-2 rounded-full bg-black/20 px-1.5 text-[11px] font-semibold">{Math.floor(orders)}/{ordersMax}</span>
+              <i aria-hidden className="absolute bottom-0 left-0 h-[3px] bg-black/35 transition-[width] duration-300" style={{ width: `${(orders / ordersMax) * 100}%` }} />
             </button>
             {floats.map((f) => (
               <span key={f.id} className="float-num text-sm" style={{ left: `${f.x}%`, top: "-4px" }}>{f.text}</span>
             ))}
           </div>
+          {showHolding && (
+            <button onClick={() => openHolding(true)} className={`relative flex h-9 items-center gap-1.5 rounded-[10px] px-3 text-sm font-semibold transition sm:h-10 ${influenceGain >= 1 ? "holding-ready text-bg" : "btn-ghost"}`} title={t("prestige.button")}>
+              <Crown size={15} aria-hidden="true" />
+              <span className="hidden sm:inline">{t("prestige.button")}</span>
+              {influenceGain >= 1 && <span className="num rounded-full bg-black/20 px-1.5 text-[11px] font-bold">+{influenceGain}</span>}
+            </button>
+          )}
           <Account />
           <SaveMenu />
         </div>
       </div>
 
-      {(boosts.length > 0 || freePulls > 0) && (
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 pb-2 text-[12px]">
-          {freePulls > 0 && <span className="rounded-full bg-gold/15 px-2 py-0.5 font-semibold text-gold">{t("news.freePullsLeft", { n: freePulls })}</span>}
-          {boosts.map((b) => <BoostChip key={b.id} label={effectLabel(b.effect, rarityLabel)} until={b.until} />)}
-        </div>
-      )}
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 pb-2 text-[12px]">
+        <span className="flex items-center gap-2 text-muted" title={t("header.collectionTitle")}>
+          <span className="num">{t("header.collection", { n: discoveredCount, total: COMPANIES.length })}</span>
+          <span className="meter w-24"><i style={{ width: `${(discoveredCount / COMPANIES.length) * 100}%`, background: "var(--color-gold)" }} /></span>
+        </span>
+        {freePulls > 0 && <span className="rounded-full bg-gold/15 px-2 py-0.5 font-semibold text-gold">{t("news.freePullsLeft", { n: freePulls })}</span>}
+        {boosts.map((b) => <BoostChip key={b.id} label={effectLabel(b.effect, rarityLabel)} until={b.until} />)}
+      </div>
     </header>
   );
 }

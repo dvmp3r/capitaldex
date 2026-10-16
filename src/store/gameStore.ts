@@ -6,6 +6,7 @@ import { ORDERS_MAX, ORDERS_REFILL_SECONDS, OFFLINE_MIN_SECONDS, SAVE_VERSION, S
 import { clickValue, offlineEarnings, totalIncome, type IncomeBreakdown } from "../game/economy";
 import { ACHIEVEMENT_BY_ID, achievementsMult, newlyUnlocked, rewardLabel, type AchievementContext, type Reward } from "../game/achievements";
 import { isMission, MISSION_COUNT, missionDone, newMission, type Mission } from "../game/missions";
+import { contactsPulls, deskOrders, HOLDING_BY_ID, influenceFor, memoryLevels, prestigeEffects, seedCapital, type HoldingLevels, type HoldingUpgradeId } from "../game/prestige";
 import { effectiveOdds, INITIAL_GACHA, pullCost, rollPull } from "../game/gacha";
 import { NEWS_OFFER_SEC, pickNews, scheduleNext, type NewsItem } from "../game/news";
 import { RARITY_RANK, rarityOf } from "../game/rarity";
@@ -67,6 +68,19 @@ export interface GameState {
   missionsDone: number;
   /** Última sacudida fuerte de la máquina (bono de suerte para la siguiente cartera; no se guarda) */
   shakenAt: number;
+  /** Colección permanente: empresa → momento en que salió por primera vez (sobrevive al holding) */
+  discovered: Record<string, number>;
+  /** Capital generado en partidas anteriores (el de esta es totalEarned) */
+  lifetimeBase: number;
+  /** Influencia disponible para gastar y total cobrada */
+  influence: number;
+  influenceEarned: number;
+  /** Mejoras permanentes del holding */
+  holding: HoldingLevels;
+  holdingsFounded: number;
+  runStartedAt: number;
+  /** Pantalla del holding abierta */
+  holdingOpen: boolean;
   /** Noticias: oferta en pantalla y momento de la siguiente */
   news: { offer: NewsOffer | null; nextAt: number };
   /** Transitorio (no se guarda) */
@@ -85,6 +99,10 @@ export interface GameState {
   checkAchievements: () => void;
   /** La máquina se ha agitado con ganas: bono de suerte para la siguiente cartera. */
   noteShake: () => void;
+  openHolding: (open: boolean) => void;
+  /** Fundar el holding: cobra la influencia y empieza una partida nueva con las mejoras permanentes. */
+  foundHolding: () => boolean;
+  buyHolding: (id: HoldingUpgradeId) => boolean;
   dismissNews: () => void;
   dismissOffline: () => void;
   clearLastPull: () => void;
@@ -114,6 +132,14 @@ function initialState(now = Date.now()) {
     missions: [] as Mission[],
     missionsDone: 0,
     shakenAt: 0,
+    discovered: {} as Record<string, number>,
+    lifetimeBase: 0,
+    influence: 0,
+    influenceEarned: 0,
+    holding: {} as HoldingLevels,
+    holdingsFounded: 0,
+    runStartedAt: now,
+    holdingOpen: false,
     news: { offer: null as NewsOffer | null, nextAt: 0 },
     lastPull: null,
     offline: null,
@@ -122,6 +148,27 @@ function initialState(now = Date.now()) {
 }
 
 let toastSeq = 0;
+
+/** Colección descubierta: la guardada o, si falta (guardados antiguos), las empresas en cartera. */
+function discoveredFrom(saved: unknown, holdings: Holdings): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (saved && typeof saved === "object") {
+    for (const [id, at] of Object.entries(saved as Record<string, unknown>)) if (BY_ID.has(id) && typeof at === "number") out[id] = at;
+  }
+  for (const [id, h] of Object.entries(holdings)) if (!out[id] && BY_ID.has(id)) out[id] = h.firstAt;
+  return out;
+}
+
+function normalizeHolding(raw: unknown): HoldingLevels {
+  const out: HoldingLevels = {};
+  if (raw && typeof raw === "object") {
+    for (const [id, lvl] of Object.entries(raw as Record<string, unknown>)) {
+      const u = HOLDING_BY_ID.get(id as HoldingUpgradeId);
+      if (u && typeof lvl === "number" && lvl > 0) out[id as HoldingUpgradeId] = Math.min(u.maxLevel, Math.floor(lvl));
+    }
+  }
+  return out;
+}
 
 /** Acepta el formato antiguo (lista de ids) o el nuevo (niveles por serie) y devuelve niveles válidos. */
 export function normalizeLevels(raw: unknown): UpgradeLevels {
@@ -137,8 +184,18 @@ export function normalizeLevels(raw: unknown): UpgradeLevels {
 }
 
 /** Multiplicadores vigentes de una partida. */
-export function multsOf(upgrades: UpgradeLevels, boosts: ActiveBoost[], now = Date.now(), achievements: string[] = []): Multipliers {
-  return computeMultipliers(upgrades, boosts, now, achievementsMult(achievements));
+export function multsOf(upgrades: UpgradeLevels, boosts: ActiveBoost[], now = Date.now(), achievements: string[] = [], influenceEarned = 0, holding: HoldingLevels = {}): Multipliers {
+  const pe = prestigeEffects(influenceEarned, holding);
+  const m = computeMultipliers(upgrades, boosts, now, achievementsMult(achievements) * pe.global);
+  m.oddsMult *= pe.oddsMult;
+  if (pe.autoPullSeconds > 0 && (m.autoPullSeconds === 0 || pe.autoPullSeconds < m.autoPullSeconds)) m.autoPullSeconds = pe.autoPullSeconds;
+  m.newsFrequency *= pe.newsFrequency;
+  return m;
+}
+
+/** Órdenes máximas de Operar, con la mesa ampliada del holding. */
+export function ordersMaxOf(holding: HoldingLevels): number {
+  return ORDERS_MAX + deskOrders(holding.desk ?? 0);
 }
 
 export function incomeOf(holdings: Holdings, mults: Multipliers): IncomeBreakdown {
@@ -206,7 +263,7 @@ export const useGame = create<GameState>()(
         const s = get();
         const dt = (now - s.lastTick) / 1000;
         if (dt <= 0) return;
-        const mults = multsOf(s.upgrades, s.boosts, now, s.achievements);
+        const mults = multsOf(s.upgrades, s.boosts, now, s.achievements, s.influenceEarned, s.holding);
         const income = incomeOf(s.holdings, mults).total;
 
         if (dt >= OFFLINE_MIN_SECONDS) {
@@ -217,7 +274,7 @@ export const useGame = create<GameState>()(
             totalEarned: s.totalEarned + report.earned,
             lastTick: now,
             offline: report.earned > 0 ? report : null,
-            orders: ORDERS_MAX,
+            orders: ordersMaxOf(s.holding),
             boosts: s.boosts.filter((b) => b.until > now),
             news: { offer: null, nextAt: scheduleNext(now, Math.random, mults.newsFrequency) },
           });
@@ -229,7 +286,7 @@ export const useGame = create<GameState>()(
           capital: s.capital + earned,
           totalEarned: s.totalEarned + earned,
           lastTick: now,
-          orders: Math.min(ORDERS_MAX, s.orders + dt / ORDERS_REFILL_SECONDS),
+          orders: Math.min(ordersMaxOf(s.holding), s.orders + dt / ORDERS_REFILL_SECONDS),
           stats: { ...s.stats, playSeconds: s.stats.playSeconds + dt },
         };
         if (s.boosts.some((b) => b.until <= now)) patch.boosts = s.boosts.filter((b) => b.until > now);
@@ -254,7 +311,7 @@ export const useGame = create<GameState>()(
 
       openPack: () => {
         const s = get();
-        const mults = multsOf(s.upgrades, s.boosts, Date.now(), s.achievements);
+        const mults = multsOf(s.upgrades, s.boosts, Date.now(), s.achievements, s.influenceEarned, s.holding);
         const free = s.freePulls > 0;
         const cost = free ? 0 : pullCost(s.gacha.pulls, mults.gachaCost);
         if (s.capital < cost) return null;
@@ -271,6 +328,7 @@ export const useGame = create<GameState>()(
           toasts,
           capital: s.capital - cost,
           holdings: { ...s.holdings, [roll.company.id]: { shares, firstAt: prev?.firstAt ?? now } },
+          discovered: s.discovered[roll.company.id] ? s.discovered : { ...s.discovered, [roll.company.id]: now },
           gacha: roll.next,
           shakenAt: 0,
           freePulls: free ? s.freePulls - 1 : s.freePulls,
@@ -286,7 +344,7 @@ export const useGame = create<GameState>()(
       work: () => {
         const s = get();
         if (s.orders < 1) return 0;
-        const mults = multsOf(s.upgrades, s.boosts, Date.now(), s.achievements);
+        const mults = multsOf(s.upgrades, s.boosts, Date.now(), s.achievements, s.influenceEarned, s.holding);
         const gain = clickValue(incomeOf(s.holdings, mults).total, mults.clickSeconds);
         set({ capital: s.capital + gain, totalEarned: s.totalEarned + gain, orders: s.orders - 1, stats: { ...s.stats, clicks: s.stats.clicks + 1 } });
         if (s.stats.clicks % 25 === 24) get().checkAchievements();
@@ -318,7 +376,7 @@ export const useGame = create<GameState>()(
         const offer = s.news.offer;
         if (!offer) return;
         const now = Date.now();
-        const mults = multsOf(s.upgrades, s.boosts, now, s.achievements);
+        const mults = multsOf(s.upgrades, s.boosts, now, s.achievements, s.influenceEarned, s.holding);
         const item = offer.item;
         const patch: Partial<GameState> = { news: { offer: null, nextAt: scheduleNext(now, Math.random, mults.newsFrequency) } };
         if (item.kind === "boost") {
@@ -340,7 +398,7 @@ export const useGame = create<GameState>()(
       dismissNews: () => {
         const s = get();
         if (!s.news.offer) return;
-        set({ news: { offer: null, nextAt: scheduleNext(Date.now(), Math.random, multsOf(s.upgrades, s.boosts, Date.now(), s.achievements).newsFrequency) } });
+        set({ news: { offer: null, nextAt: scheduleNext(Date.now(), Math.random, multsOf(s.upgrades, s.boosts, Date.now(), s.achievements, s.influenceEarned, s.holding).newsFrequency) } });
       },
 
       checkAchievements: () => {
@@ -350,7 +408,7 @@ export const useGame = create<GameState>()(
         const doneMissions = s.missions.filter((m) => missionDone(m, ctx));
         const needMissions = s.missions.length < MISSION_COUNT || doneMissions.length > 0;
         if (!fresh.length && !needMissions) return;
-        const mults = multsOf(s.upgrades, s.boosts, Date.now(), s.achievements);
+        const mults = multsOf(s.upgrades, s.boosts, Date.now(), s.achievements, s.influenceEarned, s.holding);
         const income = incomeOf(s.holdings, mults).total;
         let capital = s.capital;
         let totalEarned = s.totalEarned;
@@ -385,6 +443,53 @@ export const useGame = create<GameState>()(
 
       noteShake: () => set({ shakenAt: Date.now() }),
 
+      openHolding: (open) => set({ holdingOpen: open }),
+
+      foundHolding: () => {
+        const s = get();
+        const gain = influenceFor(s.lifetimeBase + s.totalEarned) - s.influenceEarned;
+        if (gain < 1) return false;
+        const now = Date.now();
+        const keep = memoryLevels(s.holding.memory ?? 0);
+        const upgrades: UpgradeLevels = {};
+        for (const [id, lvl] of Object.entries(s.upgrades)) if (Math.min(lvl, keep) > 0) upgrades[id] = Math.min(lvl, keep);
+        const founded = s.holdingsFounded + 1;
+        set({
+          ...initialState(now),
+          settings: s.settings,
+          discovered: s.discovered,
+          achievements: s.achievements,
+          stats: { ...s.stats, bestRarityRank: s.stats.bestRarityRank },
+          lifetimeBase: s.lifetimeBase + s.totalEarned,
+          influence: s.influence + gain,
+          influenceEarned: s.influenceEarned + gain,
+          holding: s.holding,
+          holdingsFounded: founded,
+          runStartedAt: now,
+          capital: seedCapital(s.holding.seed ?? 0),
+          freePulls: contactsPulls(s.holding.contacts ?? 0),
+          upgrades,
+          orders: ordersMaxOf(s.holding),
+          holdingOpen: false,
+          toasts: [{ id: ++toastSeq, text: `Holding nº ${founded} fundado · +${gain} de influencia`, kind: "gold" }],
+        });
+        cloudHooks.onChange?.();
+        return true;
+      },
+
+      buyHolding: (id) => {
+        const s = get();
+        const u = HOLDING_BY_ID.get(id);
+        if (!u) return false;
+        const level = (s.holding[id] ?? 0) + 1;
+        if (level > u.maxLevel) return false;
+        const cost = u.cost(level);
+        if (s.influence < cost) return false;
+        set({ influence: s.influence - cost, holding: { ...s.holding, [id]: level } });
+        cloudHooks.onChange?.();
+        return true;
+      },
+
       dismissOffline: () => set({ offline: null }),
       clearLastPull: () => set({ lastPull: null }),
       // Los ajustes se conservan, salvo que la introducción vuelve a mostrarse.
@@ -408,6 +513,13 @@ export const useGame = create<GameState>()(
           achievements: s.achievements,
           missions: s.missions,
           missionsDone: s.missionsDone,
+          discovered: s.discovered,
+          lifetimeBase: s.lifetimeBase,
+          influence: s.influence,
+          influenceEarned: s.influenceEarned,
+          holding: s.holding,
+          holdingsFounded: s.holdingsFounded,
+          runStartedAt: s.runStartedAt,
         };
         return serializeSave(data);
       },
@@ -431,6 +543,13 @@ export const useGame = create<GameState>()(
           orders: Math.min(ORDERS_MAX, r.data.orders ?? ORDERS_MAX),
           missions: (r.data.missions ?? []).filter(isMission),
           missionsDone: r.data.missionsDone ?? 0,
+          discovered: discoveredFrom(r.data.discovered, holdings),
+          lifetimeBase: r.data.lifetimeBase ?? 0,
+          influence: r.data.influence ?? 0,
+          influenceEarned: r.data.influenceEarned ?? 0,
+          holding: normalizeHolding(r.data.holding),
+          holdingsFounded: r.data.holdingsFounded ?? 0,
+          runStartedAt: r.data.runStartedAt ?? r.data.stats.startedAt,
           achievements: (r.data.achievements ?? []).filter((id) => ACHIEVEMENT_BY_ID.has(id)),
           news: { offer: null, nextAt: 0 },
           lastPull: null,
@@ -460,6 +579,13 @@ export const useGame = create<GameState>()(
         missionsDone: s.missionsDone,
         achievements: s.achievements,
         news: s.news,
+        discovered: s.discovered,
+        lifetimeBase: s.lifetimeBase,
+        influence: s.influence,
+        influenceEarned: s.influenceEarned,
+        holding: s.holding,
+        holdingsFounded: s.holdingsFounded,
+        runStartedAt: s.runStartedAt,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<GameState>;
@@ -475,6 +601,14 @@ export const useGame = create<GameState>()(
           missions: Array.isArray(p.missions) ? p.missions.filter(isMission) : [],
           missionsDone: p.missionsDone ?? 0,
           news: p.news ?? { offer: null, nextAt: 0 },
+          discovered: discoveredFrom(p.discovered, p.holdings ?? {}),
+          lifetimeBase: p.lifetimeBase ?? 0,
+          influence: p.influence ?? 0,
+          influenceEarned: p.influenceEarned ?? 0,
+          holding: normalizeHolding(p.holding),
+          holdingsFounded: p.holdingsFounded ?? 0,
+          runStartedAt: p.runStartedAt ?? p.stats?.startedAt ?? Date.now(),
+          holdingOpen: false,
         };
       },
       migrate: (persisted, version) => {
@@ -483,6 +617,7 @@ export const useGame = create<GameState>()(
         if (version < 2) return { ...p, upgrades: {}, boosts: [], freePulls: 0, news: { offer: null, nextAt: 0 } } as GameState;
         if (version < 3) return { ...p, upgrades: normalizeLevels(p.upgrades as unknown), achievements: [] } as GameState;
         if (version < 4) return { ...p, achievements: [] } as GameState;
+        if (version < 5) return { ...p, discovered: discoveredFrom(undefined, p.holdings ?? {}), lifetimeBase: 0, influence: 0, influenceEarned: 0, holding: {}, holdingsFounded: 0 } as GameState;
         return p as GameState;
       },
       onRehydrateStorage: () => (state) => {
@@ -498,7 +633,9 @@ export function useMults(): Multipliers {
   const upgrades = useGame((s) => s.upgrades);
   const boosts = useGame((s) => s.boosts);
   const achievements = useGame((s) => s.achievements);
-  return useMemo(() => multsOf(upgrades, boosts, Date.now(), achievements), [upgrades, boosts, achievements]);
+  const influenceEarned = useGame((s) => s.influenceEarned);
+  const holding = useGame((s) => s.holding);
+  return useMemo(() => multsOf(upgrades, boosts, Date.now(), achievements, influenceEarned, holding), [upgrades, boosts, achievements, influenceEarned, holding]);
 }
 
 /** Ingresos actuales, memorizados por referencia de holdings y multiplicadores. */

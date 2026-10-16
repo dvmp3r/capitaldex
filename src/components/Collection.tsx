@@ -13,17 +13,16 @@ const PAGE = 60;
 
 export function Collection() {
   const holdings = useGame((s) => s.holdings);
+  const discovered = useGame((s) => s.discovered);
   const [rarity, setRarity] = useState<Rarity | "">("");
   const [index, setIndex] = useState("");
   const [sector, setSector] = useState("");
   const [country, setCountry] = useState("");
   const [query, setQuery] = useState("");
-  const [onlyOwned, setOnlyOwned] = useState(true); // por defecto solo las empresas en cartera
+  const [onlyOwned, setOnlyOwned] = useState(() => Object.keys(useGame.getState().holdings).length > 0); // por defecto solo las empresas en cartera (si hay)
   const [sort, setSort] = useState<Sort>("cap");
   const [limit, setLimit] = useState(PAGE);
   useEffect(() => setLimit(PAGE), [rarity, index, sector, country, query, onlyOwned, sort]);
-
-  const owned = Object.keys(holdings).length;
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -55,7 +54,7 @@ export function Collection() {
     <section aria-labelledby="coleccion-h" className="min-w-0">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 id="coleccion-h" className="text-lg font-bold">{t("collection.title")}</h2>
-        <span className="num text-sm text-muted">{t("collection.discovered", { owned, total: COMPANIES.length })}</span>
+        <span className="num text-sm text-muted">{t("collection.discovered", { owned: Object.keys(discovered).length, total: COMPANIES.length })}</span>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -104,7 +103,8 @@ export function Collection() {
             {shown.map((c) => {
               const h = holdings[c.id];
               const shares = h?.shares ?? 0;
-              return <CompanyCard key={c.id} company={c} shares={shares} hidden={shares === 0} interactive={shares > 0} isNew={!!h && Date.now() - h.firstAt < 15_000} size="sm" />;
+              const seen = !!discovered[c.id];
+              return <CompanyCard key={c.id} company={c} shares={shares} hidden={shares === 0 && !seen} ghost={shares === 0 && seen} interactive={shares > 0} isNew={!!h && Date.now() - h.firstAt < 15_000} size="sm" />;
             })}
           </div>
           {list.length > limit && (

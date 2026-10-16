@@ -4,6 +4,7 @@ import { Achievements } from "./components/Achievements";
 import { Collection } from "./components/Collection";
 import { GachaPanel } from "./components/GachaPanel";
 import { Header } from "./components/Header";
+import { Holding } from "./components/Holding";
 import { Intro } from "./components/Intro";
 import { Market } from "./components/Market";
 import { NewsBanner } from "./components/NewsBanner";
@@ -101,6 +102,7 @@ export default function App() {
       </footer>
       <NewsBanner />
       <Toasts />
+      <Holding />
       <Intro />
     </div>
   );

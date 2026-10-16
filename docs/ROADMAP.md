@@ -43,6 +43,8 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [x] Pasada de "juice": oro como color del dinero, capital suavizado, números flotantes al operar, avisos de hitos, confeti en legendarias, halo en cartas nuevas, fondo con luz (15-oct-2026)
 - [x] Carta del color de su rareza (el gráfico ya no usa el color del sector, que confundía con el tier); revelado con ceremonia creciente por rareza: halo, chispas, rayos giratorios y subida distinta para épicas y legendarias (15-oct-2026)
 - [x] Logros con progreso visible (anillo, barra, "siguiente objetivo") y Mercado en tarjetas con filtros por grupo; índices como filtro desplegable de la colección; "Solo mías" activo por defecto (15-oct-2026)
+- [x] Prestigio "Fundar un holding": influencia = (capital generado total / 10⁵)^0,4, +2 % de ingresos por punto, pantalla del holding con resumen de la partida y siete mejoras permanentes (capital semilla, agenda de contactos, ojo clínico heredado, gestor de confianza, memoria del mercado, prensa amiga, mesa ampliada); colección permanente (descubiertas sobreviven al holding, cartas atenuadas), progreso de colección en la cabecera, botón Holding con la influencia pendiente; guardado v5 y fusión en la nube por capital de todas las partidas (16-oct-2026)
+- [x] Máquina con silueta clásica: pedestal cónico, cuello y aros dorados, vitrina cilíndrica y tapa redonda con la marca curvada (16-oct-2026)
 - [x] Máquina a juego con la web: cuerpo de grafito con detalles dorados (anillo, asa, postes, banda, rótulo, ranura, placa de precio), más pequeña y esbelta, cartel oscuro en la vitrina y podio casi negro con aro discreto (15-oct-2026)
 - [x] Ritmo y dopamina: curva de coste de la cartera ligada a los ingresos (1 a 5 min por cartera en vez de horas), noticias más frecuentes, tres objetivos de partida siempre visibles con recompensa que se renuevan, serie "Ojo clínico" (épica y legendaria ×1,1 por nivel), bono por agitar la máquina antes de abrir (×1,25 una vez) y probabilidades efectivas en pantalla (15-oct-2026)
 - [x] Intro con cuenta, entrar o invitado; máquina esbelta sobre podio con sombras reales y materiales PBR, tono oscuro acorde a la página; bolas que caen desordenadas al cargar; cifras con decimales fijos para que no parpadeen (15-oct-2026)
@@ -64,7 +66,7 @@ Plazos orientativos para una persona a tiempo parcial con ayuda de Claude. Cada 
 - [ ] Tarea diaria en servidor que descarga cierres y calcula el factor de mercado
 - [x] Ranking mundial por capital generado (vista pública `leaderboard`) (15-oct-2026). Pendiente: validación en servidor contra trampas
 - [ ] Ligas semanales por divisiones
-- [ ] Prestigio: fusiones y holdings
+- [x] Prestigio: fusiones y holdings (16-oct-2026; ver arriba)
 - [ ] Sets por sector y país
 - [ ] Inglés
 - [ ] Servidor de Discord y página de novedades

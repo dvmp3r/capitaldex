@@ -93,6 +93,12 @@ h1, h2, h3 { text-wrap: balance; }
 }
 .card.is-hidden .card-art { opacity: 0.3; filter: grayscale(1); }
 .card.is-hidden::after { display: none; } /* sin lámina en las no descubiertas */
+.card.card-ghost { opacity: 0.6; }
+.card.card-ghost .card-art { opacity: 0.5; filter: saturate(0.5); }
+.card.card-ghost::after { display: none; }
+/* Botón del holding cuando hay influencia que cobrar */
+.holding-ready { background: linear-gradient(180deg, oklch(0.9 0.16 92), oklch(0.78 0.16 82)); box-shadow: 0 0 0 1px oklch(0.84 0.15 88 / 0.5), 0 8px 24px -10px oklch(0.84 0.15 88 / 0.7); animation: holding-pulse 2.2s ease-in-out infinite; }
+@keyframes holding-pulse { 0%, 100% { box-shadow: 0 0 0 1px oklch(0.84 0.15 88 / 0.5), 0 8px 24px -10px oklch(0.84 0.15 88 / 0.7); } 50% { box-shadow: 0 0 0 4px oklch(0.84 0.15 88 / 0.18), 0 8px 28px -8px oklch(0.84 0.15 88 / 0.9); } }
 .card-interactive:hover { transform: translateY(-2px); }
 
 @keyframes foil {

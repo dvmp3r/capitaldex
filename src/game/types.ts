@@ -80,6 +80,14 @@ export interface SaveData {
   /** Objetivos de partida activos y completados (desde la versión 4) */
   missions?: unknown[];
   missionsDone?: number;
+  /** Prestigio y colección permanente (desde la versión 5) */
+  discovered?: Record<string, number>;
+  lifetimeBase?: number;
+  influence?: number;
+  influenceEarned?: number;
+  holding?: Record<string, number>;
+  holdingsFounded?: number;
+  runStartedAt?: number;
 }
 
 export interface SetProgress {

@@ -5,7 +5,7 @@
  */
 import type { Rarity } from "./types";
 
-export const SAVE_VERSION = 4; // 4: logros, noticias aprovechadas y gestor automático
+export const SAVE_VERSION = 5; // 5: prestigio (holding, influencia) y colección descubierta
 export const TICK_MS = 250;
 
 /** Capitalización mínima en USD para cada rareza (común = resto). */

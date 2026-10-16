@@ -13,7 +13,7 @@ export function Ranking() {
   const enabled = useCloud((s) => s.enabled);
   const user = useCloud((s) => s.user);
   const lastSyncAt = useCloud((s) => s.lastSyncAt);
-  const totalEarned = useGame((s) => s.totalEarned);
+  const totalEarned = useGame((s) => s.lifetimeBase + s.totalEarned);
   const [rows, setRows] = useState<LeaderboardRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

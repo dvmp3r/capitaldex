@@ -32,8 +32,8 @@ Cuando la run se estanca, el jugador funda un holding: se queda con la **influen
 
 ### Moneda: influencia
 
-- `influencia_total = ⌊(capital_generado_total / 10⁷)^0,4⌋`, se calcula sobre lo generado en todas las runs. Al prestigiar se cobra la diferencia con lo que ya se tenía.
-- Orientación: 10 M generados → 1; 100 M → 2; 1 000 M → 6; 10 000 M → 15; 100 000 M → 39; 1 B → 100. Se ajusta con datos de juego reales.
+- `influencia_total = ⌊(capital_generado_total / 10⁵)^0,4⌋`, se calcula sobre lo generado en todas las runs. Al prestigiar se cobra la diferencia con lo que ya se tenía. (Implementado el 16-oct-2026; la unidad bajó de 10⁷ a 10⁵ para que el primer holding llegue en 15-25 min.)
+- Orientación: 100 k generados → 1; 10 M → 6; 1 000 M → 40; 10 000 M → 100; 1 B → 631. Se ajusta con datos de juego reales.
 - El botón "Fundar holding" aparece cuando la ganancia es ≥ 1 y muestra siempre "+N influencia". Regla orientativa para el jugador: prestigia cuando puedas más o menos duplicar tu influencia.
 - Cada punto de influencia da **+2 % de ingresos permanente** aunque no se gaste (como los ángeles de AdVenture Capitalist), para que prestigiar nunca sea un error.
 

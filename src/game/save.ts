@@ -57,6 +57,11 @@ export function parseSave(text: string): ParseResult {
   if (d.orders !== undefined && !(typeof d.orders === "number" && Number.isFinite(d.orders) && d.orders >= 0)) return { ok: false, error: t("save.invalidField", { field: "orders" }) };
   if (d.missions !== undefined && !Array.isArray(d.missions)) return { ok: false, error: t("save.invalidField", { field: "missions" }) };
   if (d.missionsDone !== undefined && !isInt(d.missionsDone)) return { ok: false, error: t("save.invalidField", { field: "missionsDone" }) };
+  for (const k of ["lifetimeBase", "influence", "influenceEarned", "holdingsFounded", "runStartedAt"] as const) {
+    if (d[k] !== undefined && !(typeof d[k] === "number" && Number.isFinite(d[k]) && (d[k] as number) >= 0)) return { ok: false, error: t("save.invalidField", { field: k }) };
+  }
+  if (d.discovered !== undefined && (typeof d.discovered !== "object" || d.discovered === null)) return { ok: false, error: t("save.invalidField", { field: "discovered" }) };
+  if (d.holding !== undefined && (typeof d.holding !== "object" || d.holding === null)) return { ok: false, error: t("save.invalidField", { field: "holding" }) };
   if (d.achievements !== undefined && !(Array.isArray(d.achievements) && d.achievements.every((a) => typeof a === "string"))) {
     return { ok: false, error: t("save.invalidField", { field: "achievements" }) };
   }
