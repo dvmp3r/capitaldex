@@ -90,6 +90,8 @@ export class GachaSim {
   stir = 0;
   capsule: DropState = { active: false, rarity: "comun", p: v3(), v: v3(), scale: v3(1, 1, 1), bounces: 0, settled: false, lid: 0, glow: 0 };
   particles: Particle[] = [];
+  /** Anillo de apertura: progreso 0..1, o -1 si no hay. */
+  ring = -1;
   time = 0;
   /** Alguna cápsula de la vitrina se está moviendo */
   moving = false;
@@ -132,7 +134,7 @@ export class GachaSim {
 
   /** ¿Hay algo moviéndose o alguna fase pendiente? (la escena no dibuja cuando no) */
   busy(): boolean {
-    return this.moving || this.vanishing || this.stir > 0 || this.crank.t < 1 || (this.capsule.active && !this.capsule.settled) || this.particles.length > 0 || this.capsule.glow > 0.01 || this.timers.length > 0;
+    return this.moving || this.vanishing || this.ring >= 0 || this.stir > 0 || this.crank.t < 1 || (this.capsule.active && !this.capsule.settled) || this.particles.length > 0 || this.capsule.glow > 0.01 || this.timers.length > 0;
   }
 
   /**
@@ -220,6 +222,7 @@ export class GachaSim {
 
   reset() {
     this.vanishing = false;
+    this.ring = -1;
     this.timers = [];
     this.glowPhase = null;
     this.lidPhase = null;
@@ -229,6 +232,7 @@ export class GachaSim {
 
   skip(rarity: Rarity) {
     this.vanishing = false;
+    this.ring = -1;
     this.timers = [];
     this.glowPhase = null;
     this.lidPhase = null;
@@ -311,13 +315,20 @@ export class GachaSim {
       if (t >= 1) this.lidPhase = null;
     }
 
+    // Anillo de apertura
+    if (this.ring >= 0) {
+      this.ring += dt / 0.7;
+      if (this.ring >= 1) this.ring = -1;
+    }
     // Partículas
     for (const pt of this.particles) {
-      pt.v.y -= 6 * dt;
+      pt.v.y -= 4.5 * dt;
+      pt.v.x *= 1 - 1.2 * dt;
+      pt.v.z *= 1 - 1.2 * dt;
       pt.p.x += pt.v.x * dt;
       pt.p.y += pt.v.y * dt;
       pt.p.z += pt.v.z * dt;
-      pt.life -= dt / 0.9;
+      pt.life -= dt / 1.15;
     }
     this.particles = this.particles.filter((pt) => pt.life > 0);
 
@@ -486,16 +497,18 @@ export class GachaSim {
   private spawnParticles() {
     const d = this.capsule;
     this.particles = [];
-    const n = d.rarity === "legendaria" ? 36 : d.rarity === "epica" ? 28 : 20;
+    this.ring = 0;
+    const n = d.rarity === "legendaria" ? 60 : d.rarity === "epica" ? 48 : d.rarity === "rara" ? 38 : 30;
     for (let i = 0; i < n; i++) {
       const a = this.rng() * Math.PI * 2;
-      const up = 2 + this.rng() * 3;
-      const side = 0.6 + this.rng() * 1.6;
+      const fountain = i % 3 !== 0; // dos tercios suben como un surtidor, el resto sale en abanico bajo
+      const up = fountain ? 2.2 + this.rng() * 3 : 0.6 + this.rng() * 1.2;
+      const side = fountain ? 0.3 + this.rng() * 1.1 : 1.4 + this.rng() * 1.6;
       this.particles.push({
-        p: { x: d.p.x, y: d.p.y + 0.1, z: d.p.z },
+        p: { x: d.p.x + (this.rng() - 0.5) * 0.08, y: d.p.y + 0.12, z: d.p.z + (this.rng() - 0.5) * 0.08 },
         v: { x: Math.cos(a) * side, y: up, z: Math.sin(a) * side },
-        life: 1,
-        size: 0.02 + this.rng() * 0.035,
+        life: 0.8 + this.rng() * 0.4,
+        size: 0.022 + this.rng() * 0.045,
       });
     }
   }

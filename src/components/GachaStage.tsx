@@ -140,6 +140,8 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
   // Sonido y aviso de fase.
   useEffect(() => {
     phaseCb.current?.(phase);
+    // En cuanto se ven los datos de la carta, entra en la colección (y con ella hito, objetivos y logros).
+    if (phase === "revealed" && revealKey > 0) useGame.getState().markRevealed();
     if (!sound) return;
     if (phase === "turning") {
       playKnob();

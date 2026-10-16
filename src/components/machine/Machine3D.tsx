@@ -22,7 +22,7 @@ const RARITY_COLOR: Record<Rarity, THREE.Color> = {
   legendaria: new THREE.Color(RARITY_HEX.legendaria),
 };
 
-const MAX_PARTICLES = 40;
+const MAX_PARTICLES = 64;
 /** Paleta de la máquina: la misma de la web (grafito y oro). */
 const GOLD = "#e2b34a";
 const INK_DARK = "#1b1b1f";
@@ -441,13 +441,39 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
     upper.add(upperCap);
     drop.add(lower, lowerCap, upper);
     for (const m of [lower, lowerCap, upper, upperCap]) { m.castShadow = true; m.receiveShadow = true; }
-    const dropLight = new THREE.PointLight(0xffffff, 0, 3, 2);
+    // Luz puntual suave (solo para el reflejo en la bandeja) y halo aditivo del color de la rareza
+    const dropLight = new THREE.PointLight(0xffffff, 0, 1.6, 2);
     dropLight.position.y = 0.2;
     drop.add(dropLight);
+    const glowTex = (() => {
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = 128;
+      const g = cv.getContext("2d")!;
+      const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grad.addColorStop(0, "rgba(255,255,255,0.9)");
+      grad.addColorStop(0.35, "rgba(255,255,255,0.35)");
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 128, 128);
+      return new THREE.CanvasTexture(cv);
+    })();
+    const glowMat = new THREE.SpriteMaterial({ map: glowTex, color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+    const glow = new THREE.Sprite(glowMat);
+    glow.scale.setScalar(0.8);
+    glow.renderOrder = 20;
+    machine.add(glow);
+    // Anillo de apertura: se expande y se apaga
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const openRing = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.014, 8, 48), ringMat);
+    openRing.rotation.x = Math.PI / 2;
+    openRing.visible = false;
+    openRing.renderOrder = 21;
+    machine.add(openRing);
     machine.add(drop);
 
     // Partículas
-    const parts = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffffff }), MAX_PARTICLES);
+    const parts = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }), MAX_PARTICLES);
+    parts.renderOrder = 22;
     parts.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     parts.count = 0;
     machine.add(parts);
@@ -540,24 +566,38 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
         dropMat.color.copy(col);
         dropMat.emissive.copy(col).multiplyScalar(0.2 + d.glow * 0.9);
         dropLight.color.copy(col);
-        dropLight.intensity = 0.6 + d.glow * 6;
+        dropLight.intensity = 0.3 + d.glow * 1.4;
+        glowMat.color.copy(col);
+        glowMat.opacity = d.active ? 0.18 + d.glow * 0.55 : 0;
+        glow.position.set(d.p.x, d.p.y + 0.02, d.p.z);
+        glow.scale.setScalar((0.55 + d.glow * 0.75) * Math.max(0.2, d.scale.x));
         upper.position.y = d.lid * 0.36;
         upper.position.z = d.lid * 0.09;
         upper.rotation.x = -d.lid * 1.1;
       }
+      glow.visible = d.active;
+      // Anillo de apertura
+      if (sim.ring >= 0 && d.active) {
+        openRing.visible = true;
+        openRing.position.set(d.p.x, d.p.y + 0.02, d.p.z);
+        const k = sim.ring;
+        openRing.scale.setScalar(0.6 + k * 3.2);
+        ringMat.color.copy(RARITY_COLOR[d.rarity]);
+        ringMat.opacity = (1 - k) * 0.9;
+      } else openRing.visible = false;
       const n = Math.min(MAX_PARTICLES, sim.particles.length);
       for (let i = 0; i < n; i++) {
         const pt = sim.particles[i];
         tmp.position.set(pt.p.x, pt.p.y, pt.p.z);
         tmp.rotation.set(0, 0, 0);
-        tmp.scale.setScalar(pt.size * (0.5 + pt.life));
+        tmp.scale.setScalar(pt.size * (0.4 + Math.min(1, pt.life) * 1.1));
         tmp.updateMatrix();
         parts.setMatrixAt(i, tmp.matrix);
       }
       parts.count = n;
       if (n) {
         parts.instanceMatrix.needsUpdate = true;
-        (parts.material as THREE.MeshBasicMaterial).color.copy(tmpColor.copy(RARITY_COLOR[d.rarity]).lerp(whiteC, 0.4));
+        (parts.material as THREE.MeshBasicMaterial).color.copy(tmpColor.copy(RARITY_COLOR[d.rarity]).lerp(whiteC, 0.15));
       }
     };
 
@@ -632,6 +672,7 @@ export const Machine3D = forwardRef<MachineHandle, Props>(function Machine3D({ d
       canvas.removeEventListener("pointercancel", onUp);
       canvas.removeEventListener("click", onClick);
       labelTex.dispose();
+      glowTex.dispose();
       tagTex.dispose();
       posterTex.dispose();
       arrowsTex.dispose();
