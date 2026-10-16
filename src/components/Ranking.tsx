@@ -24,7 +24,8 @@ export function Ranking() {
     setLoading(true);
     fetchLeaderboard()
       .then((r) => {
-        setRows(r);
+        // Sin capital generado no se compite (también deja fuera cuentas de prueba vaciadas).
+        setRows(r.filter((row) => row.total_earned > 0));
         setError(null);
         setUpdatedAt(Date.now());
       })
