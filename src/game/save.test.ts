@@ -20,13 +20,13 @@ describe("exportar e importar partida", () => {
     const r = parseSave(text);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.data).toEqual(sample);
-  });
-
-  it("rechaza texto que no es JSON ni una partida", () => {
     // La nube reordena las claves (JSONB): la suma de control no debe depender del orden.
     const reordered = JSON.parse(text) as { app: string; checksum: number; data: Record<string, unknown> };
     const shuffled = Object.fromEntries(Object.entries(reordered.data).reverse());
     expect(parseSave(JSON.stringify({ ...reordered, data: shuffled })).ok).toBe(true);
+  });
+
+  it("rechaza texto que no es JSON ni una partida", () => {
     expect(parseSave("hola").ok).toBe(false);
     expect(parseSave("{}").ok).toBe(false);
     expect(parseSave(JSON.stringify({ app: "otro", data: {} })).ok).toBe(false);
