@@ -26,7 +26,7 @@ async function mergeOnLogin(user: CloudUser) {
     const parsed = JSON.parse(cloud.saveText) as { data?: { totalEarned?: number; lifetimeBase?: number } };
     const cloudEarned = (parsed.data?.lifetimeBase ?? 0) + (parsed.data?.totalEarned ?? 0);
     if (cloudEarned > game.lifetimeBase + game.totalEarned) {
-      const r = game.importSave(cloud.saveText);
+      const r = game.importSave(cloud.saveText, true);
       if (!r.ok) throw new Error(r.error);
       return;
     }

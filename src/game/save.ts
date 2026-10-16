@@ -3,16 +3,32 @@ import { SAVE_VERSION } from "./balance";
 import { hashString } from "./hash";
 import type { SaveData } from "./types";
 
+/**
+ * JSON canónico (claves ordenadas): la suma de control no depende del orden de las claves, que la
+ * base de datos de la nube (JSONB) reordena al guardar.
+ */
+export function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value && typeof value === "object") {
+    const o = value as Record<string, unknown>;
+    const keys = Object.keys(o).filter((k) => o[k] !== undefined).sort();
+    return `{${keys.map((k) => `${JSON.stringify(k)}:${canonical(o[k])}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
 /** Serializa la partida a texto JSON con una suma de control para detectar archivos corruptos o editados. */
 export function serializeSave(data: SaveData): string {
-  const payload = JSON.stringify(data);
-  return JSON.stringify({ app: "capitaldex", checksum: hashString(payload), data });
+  return JSON.stringify({ app: "capitaldex", checksum: hashString(canonical(data)), data });
 }
 
 export type ParseResult = { ok: true; data: SaveData } | { ok: false; error: string };
 
-/** Lee y valida una partida exportada. Nunca lanza: devuelve el error en texto. */
-export function parseSave(text: string): ParseResult {
+/**
+ * Lee y valida una partida exportada. Nunca lanza: devuelve el error en texto.
+ * `trusted` salta la suma de control (partidas que vienen de la nube del propio usuario).
+ */
+export function parseSave(text: string, trusted = false): ParseResult {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -22,7 +38,8 @@ export function parseSave(text: string): ParseResult {
   if (!isRecord(raw) || raw.app !== "capitaldex" || !isRecord(raw.data)) {
     return { ok: false, error: t("save.notSave") };
   }
-  if (raw.checksum !== hashString(JSON.stringify(raw.data))) {
+  // Se aceptan la suma canónica (actual) y la antigua (JSON tal cual) de los archivos exportados antes.
+  if (!trusted && raw.checksum !== hashString(canonical(raw.data)) && raw.checksum !== hashString(JSON.stringify(raw.data))) {
     return { ok: false, error: t("save.corrupt") };
   }
   const d = raw.data;

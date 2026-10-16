@@ -108,7 +108,8 @@ export interface GameState {
   clearLastPull: () => void;
   reset: () => void;
   exportSave: () => string;
-  importSave: (text: string) => ParseResult;
+  /** `trusted`: partida de la nube del propio usuario (sin suma de control). */
+  importSave: (text: string, trusted?: boolean) => ParseResult;
   setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 }
 
@@ -524,8 +525,8 @@ export const useGame = create<GameState>()(
         return serializeSave(data);
       },
 
-      importSave: (text) => {
-        const r = parseSave(text);
+      importSave: (text, trusted = false) => {
+        const r = parseSave(text, trusted);
         if (!r.ok) return r;
         // Empresas que ya no existen en el universo se descartan sin romper la partida.
         const holdings: Holdings = {};
