@@ -37,6 +37,13 @@ export function Header() {
   const [floats, setFloats] = useState<{ id: number; text: string; x: number }[]>([]);
   const seq = useRef(0);
   const [pop, setPop] = useState(0);
+  // La carta aterriza en la colección: el contador da un salto.
+  const [landed, setLanded] = useState(0);
+  useEffect(() => {
+    const on = () => setLanded((n) => n + 1);
+    window.addEventListener("capitaldex:card-landed", on);
+    return () => window.removeEventListener("capitaldex:card-landed", on);
+  }, []);
   const lastCapital = useRef(capital);
 
   // Entrada grande de capital (noticia, Operar, offline): el número da un salto.
@@ -111,7 +118,7 @@ export function Header() {
       </div>
 
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 pb-2 text-[12px]">
-        <span className="flex items-center gap-2 text-muted" title={t("header.collectionTitle")} data-tour="collection">
+        <span key={landed} className={`flex items-center gap-2 text-muted ${landed ? "pop" : ""}`} title={t("header.collectionTitle")} data-tour="collection">
           <span className="num">{t("header.collection", { n: discoveredCount, total: COMPANIES.length })}</span>
           <span className="meter w-24"><i style={{ width: `${(discoveredCount / COMPANIES.length) * 100}%`, background: "var(--color-gold)" }} /></span>
         </span>

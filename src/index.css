@@ -177,11 +177,12 @@ h1, h2, h3 { text-wrap: balance; }
   80%  { transform: translate(0, -1.5%) scale(1.02); }
   100% { opacity: 1; transform: none; filter: none; }
 }
-/* La carta se va a la colección (arriba a la derecha) */
-.card-leave { animation: card-leave 460ms cubic-bezier(0.4, 0, 1, 1) both; transform-origin: 50% 50%; pointer-events: none; }
+/* La carta vuela a la colección: hasta la última carta visible o el contador de la cabecera (--fly-x/--fly-y) */
+.card-leave { animation: card-leave 560ms cubic-bezier(0.5, 0, 0.75, 1) both; transform-origin: 50% 50%; pointer-events: none; z-index: 5; }
 @keyframes card-leave {
   0%   { opacity: 1; transform: none; }
-  100% { opacity: 0; transform: translate(70%, -70%) scale(0.25); filter: blur(2px); }
+  70%  { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(var(--fly-x, 70%), var(--fly-y, -70%)) scale(0.08); }
 }
 .card-rise-comun { animation: card-rise-plain 460ms var(--ease-out-quint) both; }
 @keyframes card-rise-plain {

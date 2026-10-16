@@ -23,7 +23,18 @@ export type StagePhase = "idle" | "turning" | "dropping" | "opening" | "revealed
 
 /** Cuánto se queda la carta a la vista antes de guardarse sola (ms). Más cuanto más rara. */
 const DWELL_MS: Record<Rarity, number> = { comun: 2600, poco_comun: 3000, rara: 3600, epica: 4600, legendaria: 6500 };
-const LEAVE_MS = 460;
+const LEAVE_MS = 560;
+
+/** Adónde vuela la carta al guardarse: la última carta visible de la colección o, si no, el contador de la cabecera. */
+function flyTarget(): Element | null {
+  const cards = document.querySelectorAll("[data-collection-grid] article.card");
+  if (cards.length) {
+    const last = cards[cards.length - 1];
+    const r = last.getBoundingClientRect();
+    if (r.top < window.innerHeight && r.bottom > 0) return last;
+  }
+  return document.querySelector('[data-tour="collection"]');
+}
 
 interface Props {
   /** Último resultado; cambia de identidad con cada tirada. */
@@ -47,6 +58,9 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
   const [phase, setPhase] = useState<StagePhase>("idle");
   /** La carta se está yendo a la colección (animación de salida). */
   const [leaving, setLeaving] = useState(false);
+  /** Desplazamiento del vuelo de la carta hacia la colección (px). */
+  const [fly, setFly] = useState<{ x: number; y: number } | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const machine = useRef<MachineHandle>(null);
   const leaveTimer = useRef<number[]>([]);
   const clearLeave = () => {
@@ -57,10 +71,17 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
   const dismiss = () => {
     clearLeave();
     machine.current?.collect();
+    // Calcula el vuelo hacia la colección antes de arrancar la animación de salida.
+    const from = cardRef.current?.getBoundingClientRect();
+    const to = flyTarget()?.getBoundingClientRect();
+    setFly(from && to ? { x: to.left + to.width / 2 - (from.left + from.width / 2), y: to.top + to.height / 2 - (from.top + from.height / 2) } : null);
     setLeaving(true);
     leaveTimer.current.push(window.setTimeout(() => {
       setLeaving(false);
       setPhase("idle");
+      // Ahora sí: la carta entra en la colección, y con ella hitos, objetivos y logros.
+      useGame.getState().markRevealed();
+      window.dispatchEvent(new CustomEvent("capitaldex:card-landed"));
     }, LEAVE_MS));
   };
   const runId = useRef(0);
@@ -119,8 +140,6 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
   // Sonido y aviso de fase.
   useEffect(() => {
     phaseCb.current?.(phase);
-    // Hasta aquí la colección no enseña la carta nueva (evita el "spoiler" durante la animación).
-    if (phase === "revealed" && revealKey > 0) useGame.getState().markRevealed();
     if (!sound) return;
     if (phase === "turning") {
       playKnob();
@@ -173,7 +192,12 @@ export function GachaStage({ result, revealKey, onPull, pullEnabled = false, onP
         <Machine2D ref={machine} dimmed={showingCard && !leaving} idle={phase === "idle" || phase === "revealed"} className="h-full w-full" />
       )}
       {phase === "revealed" && result && (
-        <div key={revealKey} className={`${leaving ? "card-leave" : `card-rise card-rise-${result.rarity}`} absolute inset-[4%]`}>
+        <div
+          key={revealKey}
+          ref={cardRef}
+          className={`${leaving ? "card-leave" : `card-rise card-rise-${result.rarity}`} absolute inset-[4%]`}
+          style={leaving && fly ? ({ "--fly-x": `${fly.x}px`, "--fly-y": `${fly.y}px` } as React.CSSProperties) : undefined}
+        >
           <CompanyCard company={result.company} shares={result.shares} size="lg" className="h-full w-full shadow-[0_30px_60px_-20px_oklch(0_0_0/0.9)]" />
           {revealKey > 0 && SPARKS[result.rarity] > 0 && <div className="card-sheen" />}
         </div>

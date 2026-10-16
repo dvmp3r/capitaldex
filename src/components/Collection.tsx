@@ -103,7 +103,7 @@ export function Collection() {
             {t("collection.inView", { owned: ownedInList, total: list.length })}
             {activeSet && <span className={activeSet.owned === activeSet.total ? "ml-3 text-legendaria-ink" : "ml-3"}>{t("sets.title", { name: activeSet.name, owned: activeSet.owned, total: activeSet.total, mult: fmtMult(activeSet.mult), bonus: Math.round(activeSet.bonus * 100) })}</span>}
           </p>
-          <div className="mt-2 grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
+          <div className="mt-2 grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]" data-collection-grid>
             {shown.map((c) => {
               const h = holdings[c.id];
               const shares = h?.shares ?? 0;
